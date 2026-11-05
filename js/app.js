@@ -297,5 +297,16 @@ const refreshDay = () => { const t = E.todayISO(); if (t !== S.today) { S.today 
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshDay(); });
 setInterval(refreshDay, 30_000);
 
-if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
+// Offline caching is only for the real https site. On localhost or over Wi-Fi nothing is cached (and any old cache is removed), so the screen is always the files on disk.
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); }); // look for a newer version each time you come back
+  }).catch(() => {});
+  // When a newer version takes over, reload once so you are not left on the old screen (not while a sheet is open, so nothing you typed is lost).
+  let hadWorker = Boolean(navigator.serviceWorker.controller);
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadWorker && !document.querySelector('#layer .sheet')) location.reload(); hadWorker = true; });
+} else if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((list) => list.forEach((r) => r.unregister())).catch(() => {});
+  if (window.caches) caches.keys().then((keys) => keys.filter((k) => k.startsWith('allowance-')).forEach((k) => caches.delete(k))).catch(() => {});
+}
 export { TABS, esc, countUp };

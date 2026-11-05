@@ -25,6 +25,8 @@ const rm = (m) => { const v = Math.abs(m) / 100; return (m < 0 ? '−' : '') + (
 const signed = (m) => (m > 0 ? '+' : m < 0 ? '−' : '') + rm(Math.abs(m));
 /** "2026-11-04" → "11/04", the way the date sits under each bar. */
 const md = (date) => `${date.slice(5, 7)}/${date.slice(8)}`;
+const dayCount = (n) => `${n} day${n === 1 ? '' : 's'}`;
+const next = (n) => (n === 1 ? 'the next day' : `the next ${n} days`);
 const SHOWN = 6; // days drawn (today and five more), so every bar is wide; a plan longer than that scrolls
 
 /** The explanation of the chart, in a small sheet, so the bars themselves can stay free of words. */
@@ -34,7 +36,7 @@ export function openChartInfo() {
     <div class="mk-row"><span class="mk-mark"><i class="mk-dot">8</i></span><div><b>The round number</b><p>Today it is everything spent today. On the days after it is the most you can spend that day.</p></div></div>
     ${row('red', 'Red bar: today', 'The top part is the extra from this purchase. The bottom part is your usual day.')}
     ${row('green', 'Green bars: the days after', 'The big part is your usual day. The small piece at the bottom is what is deducted from it to pay the purchase back.')}
-    <div class="mk-row"><span class="mk-mark"><span class="bc-sw on" style="margin:0">${swapIcon({ cheaperName: 'Bread' }, 15)}</span></span><div><b>The round icons under a date</b><p>Cheaper swaps you can use that day. Tap one to switch it on: its saving is deducted from that day, and the rest is shared out again.</p></div></div>
+    <div class="mk-row"><span class="mk-mark"><span class="bc-sw on" style="margin:0">${swapIcon({ cheaperName: 'Bread' }, 15)}</span></span><div><b>The round icons under a date</b><p>Cheaper swaps you can use that day. Tap one to switch it on and it lights up. A swap for a fixed bill (like breakfast) adds its own yellow block showing how much that bill goes down by. Any other swap is deducted from that day. The rest is shared out again.</p></div></div>
     </div>` }] });
 }
 
@@ -53,12 +55,12 @@ function chartHTML(cols, aria, line, head, turn) {
   const sum = (c) => c.layers.reduce((t, l) => t + Math.max(l.v ?? 0, 0), 0);
   const max = Math.max(1, ...cols.map(sum));
   const bars = cols.map((c) => {
-    const layers = c.layers.map((l, i) => `<i class="s${i}" style="flex:${Math.max(l.v ?? 0, 1)} 1 0"><b>${l.text}</b></i>`).join('');
+    const layers = c.layers.map((l, i) => `<i class="s${i}${l.cls ? ` ${l.cls}` : ''}" style="flex:${Math.max(l.v ?? 0, 1)} 1 0"><b>${l.text}</b>${l.sub ? `<em>${esc(l.sub)}</em>` : ''}</i>`).join('');
     return `<div class="bc-c"><div class="bc-bar ${c.over ? 'bad' : 'good'}" style="height:${Math.max(60, Math.round((sum(c) / max) * BAR_H))}px"><span class="bc-pill">${rm(c.badge)}</span><div class="bc-segs">${layers}</div></div></div>`;
   }).join('');
   // Under each coming day: up to two round swap icons that overlap. A lit one is in use that day; tap to switch it on or off.
   const swapBtn = (c, s, k) => { const on = c.picked?.includes(s.id); return `<button class="bc-sw${on ? ' on' : ''}${s.fits === false ? ' off' : ''}" style="z-index:${on ? 3 : 2 - k}" data-act="ai-swap" data-turn="${turn}" data-date="${c.date}" data-id="${s.id}" aria-pressed="${Boolean(on)}" aria-label="${esc(`${s.cheaperName} instead of ${s.usualName}, saves ${E.cash(E.swapSaving(s))}`)}">${swapIcon(s, 15)}</button>`; };
-  const labels = cols.map((c) => `<div class="bc-l"><span class="bc-ic">${(c.cands ?? []).map((sw, k) => swapBtn(c, sw, k)).join('') || '<i></i>'}</span><b>${c.now ? 'Today' : md(c.date)}</b></div>`).join('');
+  const labels = cols.map((c) => `<div class="bc-l"><span class="bc-ic${(c.cands ?? []).length > 2 ? ' n3' : ''}">${(c.cands ?? []).map((sw, k) => swapBtn(c, sw, k)).join('') || '<i></i>'}</span><b>${c.now ? 'Today' : md(c.date)}</b></div>`).join('');
   return `<div class="bc" role="img" aria-label="${esc(aria)}">
     <div class="bc-head"><span class="bc-chip">${head.chip}</span><b>${head.strong}</b><em>${head.soft}</em><button class="bc-info" data-act="ai-info" aria-label="What the chart shows"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/></svg></button></div>
     <div class="bc-scroll"><div class="bc-in">
@@ -74,7 +76,7 @@ function verdictHTML(t, i) {
   const data = `data-n="${esc(t.name)}" data-a="${t.amount}" data-turn="${i}"`;
   const goal = `<button class="btn ${full ? 'text' : 'ink'}" data-act="ai-goal" ${data}${full ? ' style="color:var(--ink)"' : ''}>Set as goal</button>`;
   const actions = `<div class="pill-row" style="margin-top:14px;flex-wrap:wrap">${full
-    ? `<button class="btn ink" data-act="ai-payback" ${data}>Buy it, pay back over ${plan.days.length} days</button>${goal}`
+    ? `<button class="btn ink" data-act="ai-payback" ${data}>Buy it, pay back over ${dayCount(plan.days.length)}</button>${goal}`
     : `${goal}<button class="btn text" data-act="ai-bought" ${data} style="color:var(--ink)">I bought it</button>`}</div>`;
   const title = `<div class="vz-eyebrow">${esc(t.name)} · ${E.cash(t.amount)}</div><h4>${fits ? 'Fits today’s budget' : after >= 0 ? 'Maybe wait a little' : 'Hold off this month'}</h4>`;
   const over = after < 0 ? `<p>That’s ${E.cash(-after)} over this month’s budget and would eat into your savings.</p>` : '';
@@ -83,16 +85,22 @@ function verdictHTML(t, i) {
     // Today: your usual day plus the extra. Each coming day: your usual day, with what is deducted for this purchase under it.
     const cols = [{ now: true, over: true, badge: plan.total, layers: [{ text: signed(plan.over), label: 'EXTRA', v: plan.over }, { text: rm(plan.total - plan.over), label: 'USUAL', v: plan.total - plan.over }] },
       ...plan.options.slice(0, SHOWN - 1).map((c) => ({ date: c.date, badge: c.now, cands: c.cands, picked: c.swaps.map((sw) => sw.id),
-        layers: [{ text: rm(c.was), label: 'USUAL', v: c.now }, ...(c.cut > 0 ? [{ text: signed(-c.cut), label: 'DEDUCTED', v: c.cut }] : [])] }))];
+        // A swap for one of your fixed bills adds its own block under the day: how much that bill goes down by. The day's own money is untouched.
+        layers: [{ text: rm(c.was), label: 'USUAL', v: c.now }, ...(c.cut > 0 ? [{ text: signed(-c.cut), label: 'DEDUCTED', v: c.cut }] : []),
+          ...c.swaps.filter((sw) => sw.fromBill).map((sw) => ({ text: signed(-E.swapSaving(sw)), sub: String(sw.usualName).trim().split(/\s+/)[0].slice(0, 9).toUpperCase(), label: sw.usualName, v: E.swapSaving(sw), cls: 'bc-bill' }))] }))];
     const avg = Math.round(plan.covered / plan.days.length);
     const used = plan.days.some((c) => c.swaps.length);
     const big = `RM ${rm(plan.total - plan.over)} + ${rm(plan.over)} = RM ${rm(plan.total)}`;
-    const small = used ? `Swap in cheaper options over the next ${plan.days.length} days to make up the ${E.cash(plan.covered)}.`
-      : `${full ? 'Pay it back over' : 'Trim'} the next ${plan.days.length} days: about ${E.cash(avg)} less a day.`;
-    const head = { chip: 'PLAN', strong: `${plan.days.length} days`, soft: 'to pay back' };
+    const small = used ? `Swap in cheaper options over ${next(plan.days.length)} to make up the ${E.cash(plan.covered)}.`
+      : `${full ? 'Pay it back over' : 'Trim'} ${next(plan.days.length)}: about ${E.cash(avg)} less a day.`;
+    const head = { chip: 'PLAN', strong: dayCount(plan.days.length), soft: 'to pay back' };
     // A swap that matches one of your fixed bills (a Breakfast bill → the breakfast swap), priced against that bill. Tapping only previews it.
+    // Once tapped it says what changes: "Breakfast RM 10.00 → RM 6.88 on 11/06"; before that it explains what the icon would do.
+    const lit = new Map();
+    for (const o of plan.options) for (const sw of o.swaps) if (sw.fromBill) lit.set(sw.id, { sw, dates: [...(lit.get(sw.id)?.dates ?? []), md(o.date)] });
     const billSwap = plan.options.flatMap((o) => o.cands).find((c) => c.fromBill);
-    const billNote = billSwap ? `<p class="muted small" style="margin:10px 0 0">From your ${esc(billSwap.usualName)} bill (${E.cash(billSwap.usualMinor)} a day): ${esc(billSwap.cheaperName)} is ${E.cash(billSwap.cheaperMinor)}, so it saves ${E.cash(E.swapSaving(billSwap))}. Tap its icon under a date to see the effect. Nothing changes until you buy.</p>` : '';
+    const billNote = lit.size ? `<p class="muted small" style="margin:10px 0 0">${[...lit.values()].map(({ sw, dates }) => `<b>${esc(sw.usualName)}</b> ${E.cash(sw.usualMinor)} → ${E.cash(sw.cheaperMinor)} on ${dates.join(', ')} (−${E.cash(E.swapSaving(sw))} a day)`).join('<br>')}<br>Nothing changes until you buy.</p>`
+      : billSwap ? `<p class="muted small" style="margin:10px 0 0">From your ${esc(billSwap.usualName)} bill (${E.cash(billSwap.usualMinor)} a day): ${esc(billSwap.cheaperName)} is ${E.cash(billSwap.cheaperMinor)}, so it saves ${E.cash(E.swapSaving(billSwap))}. Tap its icon under a date to use it that day. Nothing changes until you buy.</p>` : '';
     return `<div class="verdict">${title}<div class="vz-big">${big}</div><div class="vz-sub">${small}</div>
       ${chartHTML(cols, `${big}. ${small}`, plan.usual, head, i)}${billNote}
       ${plan.short > 0 ? `<p>${E.cash(plan.short)} more can’t be paid back from the days left.</p>` : ''}${over}${actions}</div>`;
@@ -107,8 +115,8 @@ function verdictHTML(t, i) {
   const cols = [{ now: true, badge: r.spentToday + t.amount, layers: [{ text: signed(t.amount), label: 'THIS', v: t.amount }, ...(r.spentToday > 0 ? [{ text: rm(r.spentToday), label: 'SPENT', v: r.spentToday }] : [])] },
     ...cuts.slice(0, SHOWN - 1).map((c) => ({ date: c.date, badge: c.now, layers: [{ text: rm(c.was), label: 'USUAL', v: c.now }, ...(c.cut > 0 ? [{ text: signed(-c.cut), label: 'DEDUCTED', v: c.cut }] : [])] }))];
   const big = `${E.cash(Math.max(left - t.amount, 0))} left today`;
-  const small = avgCut > 0 ? `About ${E.cash(avgCut)} less a day for the next ${cuts.length} days.` : `Nothing changes for the next ${cuts.length} days.`;
-  const head = { chip: 'NEXT', strong: `${Math.min(cuts.length, SHOWN - 1)} days`, soft: 'after buying' };
+  const small = avgCut > 0 ? `About ${E.cash(avgCut)} less a day for ${next(cuts.length)}.` : `Nothing changes for ${next(cuts.length)}.`;
+  const head = { chip: 'NEXT', strong: dayCount(Math.min(cuts.length, SHOWN - 1)), soft: 'after buying' };
   return `<div class="verdict">${title}<div class="vz-big">${big}</div><div class="vz-sub">${small}</div>
     ${chartHTML(cols, `${big}. ${small}`, Math.max(r.todayAllowance, 0), head)}${actions}</div>`;
 }
@@ -122,8 +130,8 @@ function surplusHTML() {
   const cols = [{ now: true, badge: r.spentToday, layers: [{ text: rm(left), label: 'LEFT', v: left }, { text: rm(r.spentToday), label: 'SPENT', v: r.spentToday }].filter((l) => l.v > 0) },
     ...extra.slice(0, SHOWN - 1).map((c) => ({ date: c.date, badge: c.base + c.plus, layers: [{ text: rm(c.base), label: 'USUAL', v: c.base }, ...(c.plus > 0 ? [{ text: signed(c.plus), label: 'EXTRA', v: c.plus }] : [])] }))];
   const big = avg > 0 ? `About ${E.cash(avg)} more a day` : `${E.cash(r.todayRemaining)} left today`;
-  const small = avg > 0 ? `Today’s ${E.cash(r.todayRemaining)} unspent is shared over the next ${extra.length} days.` : 'Spend it today, or it rolls into tomorrow.';
-  const head = { chip: 'NEXT', strong: `${Math.min(extra.length, SHOWN - 1)} days`, soft: 'with today’s leftover' };
+  const small = avg > 0 ? `Today’s ${E.cash(r.todayRemaining)} unspent is shared over ${next(extra.length)}.` : 'Spend it today, or it rolls into tomorrow.';
+  const head = { chip: 'NEXT', strong: dayCount(Math.min(extra.length, SHOWN - 1)), soft: 'with today’s leftover' };
   return `<div class="verdict"><div class="vz-eyebrow">Today · ${E.cash(r.todayAllowance)} planned</div><h4>${E.cash(r.todayRemaining)} unspent</h4>
     <div class="vz-big">${big}</div><div class="vz-sub">${small}</div>
     ${chartHTML(cols, `${big}. ${small}`, Math.max(r.todayAllowance, 0), head)}</div>`;
@@ -197,7 +205,7 @@ export function buyAndPayBack(name, amount, turn) {
   commit((d) => {
     const plan = E.payback(d, amount, S.today, pick);
     let out = E.saveEntry(d, E.newEntry({ date: S.today, amountMinor: amount, category: 'SHOPPING', note: name }), S.today);
-    for (const c of plan?.days ?? []) out = E.setPlan(out, c.date, c.now, S.today);
+    for (const c of plan?.days ?? []) if (c.cut > 0) out = E.setPlan(out, c.date, c.now, S.today); // a day that only swaps a bill keeps its own money
     // Remember which swaps were chosen for which days (by name, so deleting a swap later doesn't change history).
     if (plan?.days.length) out = E.addPayback(out, { id: E.id(), date: S.today, name, amountMinor: amount,
       days: plan.days.map((c) => ({ date: c.date, cutMinor: c.cut, swaps: c.swaps.map((s) => ({ name: s.cheaperName, usual: s.usualName, icon: s.icon, savingMinor: E.swapSaving(s) })) })) });

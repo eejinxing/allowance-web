@@ -917,7 +917,11 @@ button.sw-tile:active { transform: scale(.97); }
 .bc-sw { position: relative; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex: none; background: #141414; color: #fff; transition: opacity .2s, box-shadow .2s, transform .15s var(--ease); }
 .bc-sw + .bc-sw { margin-left: -9px; }
 .bc-sw svg { width: 15px; height: 15px; }
-.bc-sw.on { box-shadow: 0 0 0 2px #fff7d6, 0 0 0 4px #141414; z-index: 2; }
+/* Lit when you tap it: a yellow-to-white disc with a dark ring, the same colours as the block it adds to the bar. */
+.bc-sw.on { background: linear-gradient(160deg, #ffd91f 0%, #fff3a6 50%, #fff 100%); color: #141414; box-shadow: 0 0 0 2px #141414, 0 6px 14px -6px rgba(20, 20, 20, .45); z-index: 3; }
+.bc-ic.n3 .bc-sw + .bc-sw { margin-left: -14px; }
+.bc-bar .bc-segs i.bc-bill { background: linear-gradient(180deg, #ffd91f 0%, #ffeb85 55%, #fff6c9 100%); color: #3a2e00; min-height: 34px; }
+.bc-segs i.bc-bill em { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .75; }
 .bc-sw.off { opacity: .22; pointer-events: none; }
 .bc-sw:active { transform: scale(.9); }
 .sw-em svg { width: 20px; height: 20px; }

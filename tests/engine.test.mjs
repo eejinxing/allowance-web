@@ -212,16 +212,16 @@ test('an overspend is paid back about RM 1 a day over the next days, and a purch
   assert.equal(p.total, allowance + 800);
 });
 
-test('with swaps, an overspend is paid back by cheaper options first and the leftover is trimmed', () => {
+test('swaps are only used once you tap them; until then an overspend is just trimmed evenly, and the icons are still offered', () => {
   const settings = { nickname: '', incomeMinor: 30_000, incomeFrequency: 'MONTHLY', savingsMinor: 0, started: '2026-10-01', weights: Array(7).fill(1), weightMode: 'EVEN' };
   let data = E.ensureMonths({ ...E.emptyData(), settings }, today);
   const allowance = E.result(data, month, today).todayAllowance;
   data = E.saveEntry(data, E.newEntry({ date: today, amountMinor: allowance, category: 'FOOD' }), today);
   const p = E.payback(data, 800, today);
-  assert.ok(p.days[0].swaps.length > 0, 'the first day gets a swap');
-  assert.ok(p.days.every((d) => d.swaps.length <= 2));
+  assert.ok(p.days.every((d) => d.swaps.length === 0), 'nothing is used until it is tapped');
+  assert.ok(p.options.every((o) => o.cands.length > 0), 'but the swap icons are offered on every day');
   assert.equal(p.short, 0);
-  assert.equal(p.days.reduce((t, d) => t + d.cut, 0), 800); // swaps plus trim cover exactly what doesn't fit
+  assert.equal(p.days.reduce((t, d) => t + d.cut, 0), 800); // the trim covers exactly what doesn't fit
   assert.ok(p.days.every((d) => d.now === d.was - d.cut && d.now >= 0));
   const saved = E.addPayback(data, { id: 'p1', date: today, name: 'x', amountMinor: 800, days: p.days.map((d) => ({ date: d.date, cutMinor: d.cut, swaps: d.swaps.map((s) => ({ name: s.cheaperName, icon: s.icon, savingMinor: E.swapSaving(s) })) })) });
   assert.equal(E.decodeBackup(JSON.stringify(saved), today).budgets.find((b) => b.month === month).paybacks.length, 1);
@@ -258,6 +258,30 @@ test('a Breakfast bill lines up with the breakfast swap and is priced against th
   E.payback(dear, 800, today, { [E.payback(dear, 800, today).options[0].date]: [first.id] });
   assert.equal(JSON.stringify(dear), before);
   assert.equal(dear.bills[0].amountMinor, 600);
+});
+
+test('a bill swap takes its saving from the bill: the day keeps its own money, it always fits, and several bills can each offer one', () => {
+  const settings = { nickname: '', incomeMinor: 100_000, incomeFrequency: 'MONTHLY', savingsMinor: 0, started: '2026-10-01', weights: Array(7).fill(1), weightMode: 'EVEN' };
+  const bills = [{ id: 'b', name: 'Breakfast', amountMinor: 600, frequency: 'DAILY', family: false }, { id: 'l', name: 'Lunch', amountMinor: 1_000, frequency: 'DAILY', family: false }];
+  let data = E.ensureMonths({ ...E.emptyData(), settings, bills }, today);
+  data = E.saveEntry(data, E.newEntry({ date: today, amountMinor: E.result(data, month, today).todayAllowance, category: 'FOOD' }), today);
+  const base = E.payback(data, 800, today);
+  const cands = base.options[0].cands;
+  const bread = cands.find((c) => c.billId === 'b'); const lunch = cands.find((c) => c.billId === 'l');
+  assert.ok(bread && lunch, 'breakfast and lunch each get an icon, even though both are Food');
+  assert.ok(base.options[0].cands.every((c) => c.fits));
+  const day = base.options[0].date;
+  const on = E.payback(data, 800, today, { [day]: [bread.id] });
+  const d1 = on.days.find((d) => d.date === day);
+  assert.equal(d1.billSaved, 400);
+  assert.equal(d1.now, d1.was - d1.cut, 'the day only gives up its share of the trim, never the bill saving');
+  assert.equal(on.days.reduce((t, d) => t + d.cut, 0), 400); // 800 over, 400 saved from the breakfast bill, 400 trimmed
+  assert.equal(on.short, 0);
+  const both = E.payback(data, 800, today, { [day]: [bread.id, lunch.id] }); // RM 4 from breakfast plus RM 5 from lunch
+  assert.equal(both.days.find((d) => d.date === day).swaps.length, 2);
+  assert.equal(both.days.find((d) => d.date === day).billSaved, 900);
+  // the same bill can't be used twice on one day
+  assert.equal(E.payback(data, 800, today, { [day]: [bread.id, bread.id] }).days.find((d) => d.date === day).swaps.length, 1);
 });
 
 test('a fixed bill paid by family is never taken from your budget, even if an old copy of the month still counts it', () => {

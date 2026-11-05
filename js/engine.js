@@ -320,15 +320,16 @@ export function swapForBills(swap, bills, month) {
   const hits = bills.filter((b) => !b.family && nameWords(b.name).some((w) => words.includes(w)));
   if (!hits.length) return swap;
   const best = hits.map((b) => ({ b, price: billPerDay(b, month) })).filter((h) => h.price > swap.cheaperMinor).sort((a, c) => c.price - a.price)[0];
-  return best ? { ...swap, usualName: best.b.name, usualMinor: best.price, fromBill: true } : null;
+  return best ? { ...swap, usualName: best.b.name, usualMinor: best.price, fromBill: true, billId: best.b.id } : null;
 }
 
 /**
  * Buying `amount` more today than today allows: a gentle way to pay the overspend back over the next days. Null when it fits today.
- * Swaps come first: the cheaper options you keep (the bus for the train), lined up with your fixed bills and the categories you spend most on,
- * up to two a day and never two from the same category. What is left is trimmed evenly, about RM 1 a day. With no swap that fits, it is only that trim.
- * `pick` ({ date: [swap ids] }) replaces the automatic choice with the swaps you tapped. Days that already have a plan are left alone, and no day gives up more than it has.
- * `options` are the next five days with the swaps that could go on each, so the chart can offer them.
+ * Nothing is used until you tap it: with no `pick` the overspend is only trimmed evenly, about RM 1 a day.
+ * `pick` ({ date: [swap ids] }) is the swaps you tapped. A swap that matches one of your fixed bills (breakfast) takes its saving from that bill, so it
+ * counts toward the overspend without using up the day's own money (one per bill a day, and it always fits); any other swap (the bus for the train)
+ * is deducted from that day, never two from the same category and never more than the day has. What is left is trimmed evenly over the days.
+ * Days that already have a plan are left alone. `options` are the next five days with the swaps that could go on each, so the chart can offer them.
  */
 export function payback(data, amount, today, pick) {
   const month = monthOf(today);
@@ -349,43 +350,35 @@ export function payback(data, amount, today, pick) {
   const byId = Object.fromEntries(pool.map((s) => [s.id, s]));
 
   const swapsOn = {}; let rest = over;
-  if (pick) {
-    for (const date of usable) {
-      let room = was(date); const got = [];
-      for (const id of pick[date] || []) {
-        const s = byId[id]; if (!s) continue;
-        if (swapSaving(s) <= room && !got.some((g) => g.category === s.category)) { got.push(s); room -= swapSaving(s); }
-      }
-      if (got.length) { swapsOn[date] = got; rest -= got.reduce((t, s) => t + swapSaving(s), 0); }
+  for (const date of usable) {
+    let room = was(date); const got = [];
+    for (const id of (pick && pick[date]) || []) {
+      const s = byId[id]; if (!s) continue;
+      if (s.fromBill) { if (!got.some((g) => g.billId === s.billId)) got.push(s); }
+      else if (swapSaving(s) <= room && !got.some((g) => !g.fromBill && g.category === s.category)) { got.push(s); room -= swapSaving(s); }
     }
-    rest = Math.max(rest, 0);
-  } else {
-    for (const date of usable) {
-      if (rest <= 0) break;
-      let room = was(date); const got = [];
-      for (const s of pool) {
-        const save = swapSaving(s);
-        if (got.length < 2 && save <= rest && save <= room && !got.some((g) => g.category === s.category)) { got.push(s); rest -= save; room -= save; }
-      }
-      if (!got.length) break; // nothing fits any more; what is left is trimmed below
-      swapsOn[date] = got;
-    }
+    if (got.length) { swapsOn[date] = got; rest -= got.reduce((t, s) => t + swapSaving(s), 0); }
   }
+  rest = Math.max(rest, 0);
   const swapDays = Object.keys(swapsOn).length;
   const swapSpan = Math.max(0, ...Object.keys(swapsOn).map((d) => usable.indexOf(d) + 1));
-  const saved = (date) => (swapsOn[date] || []).reduce((t, s) => t + swapSaving(s), 0);
+  const sumOf = (date, fromBill) => (swapsOn[date] || []).filter((s) => Boolean(s.fromBill) === fromBill).reduce((t, s) => t + swapSaving(s), 0);
+  const saved = (date) => sumOf(date, false);       // taken from the day's own money
+  const billSaved = (date) => sumOf(date, true);    // taken from a fixed bill, so the day keeps its money
   // The leftover goes evenly over the swap days plus enough following days to keep it to about RM 1 each (3 to 14 days when there are no swaps).
   const span = Math.min(usable.length, 14, Math.max(swapSpan, rest > 0 ? Math.max(swapDays ? 1 : 3, Math.ceil(rest / 100)) : 0));
   const days = usable.slice(0, span);
   const trim = spread(rest, days, Object.fromEntries(days.map((d) => [d, was(d) - saved(d)])));
   const out = days.map((date) => {
     const cut = saved(date) + trim.cuts[date];
-    return { date, was: was(date), swaps: swapsOn[date] || [], trim: trim.cuts[date], cut, now: was(date) - cut };
-  }).filter((c) => c.cut > 0);
-  const cands = []; for (const s of pool) if (cands.length < 2 && !cands.some((c) => c.category === s.category)) cands.push(s);
+    return { date, was: was(date), swaps: swapsOn[date] || [], trim: trim.cuts[date], cut, billSaved: billSaved(date), now: was(date) - cut };
+  }).filter((c) => c.cut > 0 || c.billSaved > 0);
+  // The icons offered under each day: one for each of your bills that has a cheaper swap (breakfast, dinner), then another kind (transport) if there is room.
+  const cands = pool.filter((s, i) => s.fromBill && pool.findIndex((x) => x.fromBill && x.billId === s.billId) === i).slice(0, 3);
+  for (const s of pool) if (cands.length < 2 && !s.fromBill && !cands.some((c) => c.category === s.category)) cands.push(s);
   const options = usable.slice(0, 5).map((date) => {
     const o = out.find((c) => c.date === date); const cut = o?.cut ?? 0;
-    return { date, was: was(date), cut, now: was(date) - cut, swaps: swapsOn[date] || [], cands: cands.map((s) => ({ ...s, fits: swapSaving(s) <= was(date) })) };
+    return { date, was: was(date), cut, now: was(date) - cut, billSaved: o?.billSaved ?? 0, swaps: swapsOn[date] || [], cands: cands.map((s) => ({ ...s, fits: s.fromBill || swapSaving(s) <= was(date) })) };
   });
   return { over, usual: Math.max(r.todayAllowance, 0), total: r.spentToday + amount, days: out, options, covered: over - trim.rest, short: trim.rest };
 }

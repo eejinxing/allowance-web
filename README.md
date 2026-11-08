@@ -28,6 +28,26 @@ The model only *reads*: it fills in a fixed form (what you want, the item, the c
 
 Amounts are never guessed: if there is no readable price, nothing is recorded.
 
+## How accurate is it? (measured, with the limits)
+
+`node eval/run.mjs` scores the assistant on labelled sentences (`eval/cases.mjs`): rules only, or `--llm` for rules plus the real model on Ollama. It reports precision and recall per kind of action, and three numbers about safety: **write precision** (of the records it would save, how many are right in amount and day), **write recall** (of the real records, how many it found) and **false-action rate** (sentences that need nothing, like "I walked 3 km", where it did something anyway = the hallucinated actions).
+
+With the model on, two readers must agree before anything is saved: the rules and the model (`combine` in `js/llm.js`). With the model off, the rules alone decide (their own numbers are in the table below). Amounts, days, periods and categories come from the words themselves, never from the model; the model decides *what kind of request it is*. Its only free text is small talk, which was checked on 71 do-nothing sentences: no invented amounts and no claimed actions.
+
+What the numbers honestly say (rules only, same first-run rule for every set: score once, then fix, then write a new set):
+
+| First run on sentences it had never seen | macro-F1 | write precision | write recall | false actions |
+|---|---|---|---|---|
+| Held-out, round 1, before any fix | 77% | 88% | 71% | 64% |
+| FRESH, before its fixes | 95% | 100% | 91% | 17% |
+| FRESH2, before its fixes | 92% | 93% | 87% | 7% |
+| **FRESH3 (sealed), rules only** | 95% | 100% | 100% | 14% |
+| **FRESH3 (sealed), rules + model** | **100%** | **100%** | **100%** | **0%** |
+
+- **Overfitting** was real: the first held-out round fell 18 points below the development set (95% vs 77%), mostly because any bare number was read as a price ("I got 100% on my exam" became a RM 100 expense). Those are fixed by principles (what may follow a number), not by patching sentences, and re-checked on sets written before the fixes.
+- **Underfitting** was real too: Malay, spelled-out numbers ("twenty ringgit"), past tenses like "ate" and "was", and "what did I spend yesterday" were missed, and are now covered. Known gaps that remain: a year ("in 2019") or a phone-style number alone can still raise a harmless "can I buy it?" card (never a record), and Chinese food words like 包子 are not categorised.
+- **Limits of this evidence:** the sentences were written by the same person who wrote the rules, not collected from real use; 50 sentences with 13 records can't prove a 0% error rate (zero errors in 13 only says the true rate is probably under roughly a quarter); the in-browser WebLLM model was never evaluated; receipts were tried on one synthetic receipt only, which is why a receipt photo is never saved without your check. Real use is the next test: the sets in `eval/` are where to add whatever it gets wrong.
+
 ## Use it
 
 Open the site, or on a computer serve this folder and open it in a browser:
@@ -41,7 +61,7 @@ Then open `http://localhost:8080/`. On an iPhone, open the address in Safari and
 ## Check it
 
 ```bash
-node --test tests/engine.test.mjs tests/nlu.test.mjs tests/llm.test.mjs
+node --test tests/engine.test.mjs tests/nlu.test.mjs tests/llm.test.mjs tests/memory.test.mjs
 ```
 
 ## Good to know

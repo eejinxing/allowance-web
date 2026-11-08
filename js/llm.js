@@ -13,7 +13,7 @@
 //   - If the model is off, still loading, slow, or answers nonsense, the caller falls back to the plain rules.
 // This file has no DOM and no state.js, so it can be tested in Node with a fake engine.
 import * as E from './engine.js';
-import { findAmount, guessCategory, nameFrom, dateIn, FAR_PAST } from './nlu.js';
+import { findAmount, guessCategory, nameFrom, dateIn, explicitPeriod, FAR_PAST } from './nlu.js';
 
 const WEBLLM = 'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.87/+esm'; // pinned on purpose; the service worker keeps it for offline use
 const MODELS = { f16: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', f32: 'Qwen2.5-1.5B-Instruct-q4f32_1-MLC' }; // f32 for GPUs without shader-f16
@@ -48,7 +48,10 @@ Examples:
 "how much did I spend on food this month" -> {"action":"spending","item":"","category":"FOOD","days_ago":0,"period":"month","reply":""}
 "今天还能花多少" -> {"action":"status","item":"","category":"NONE","days_ago":0,"period":"today","reply":""}
 "oops, delete that" -> {"action":"undo","item":"","category":"NONE","days_ago":0,"period":"today","reply":""}
-"hi" -> {"action":"chat","item":"","category":"NONE","days_ago":0,"period":"today","reply":"Hi! Tell me what you spent, or what you want to buy."}${hints ? `
+"hi" -> {"action":"chat","item":"","category":"NONE","days_ago":0,"period":"today","reply":"Hi! Tell me what you spent, or what you want to buy."}
+"thanks a lot" -> {"action":"chat","item":"","category":"NONE","days_ago":0,"period":"today","reply":"You're welcome!"}
+"今天天气真好" -> {"action":"chat","item":"","category":"NONE","days_ago":0,"period":"today","reply":"是啊！需要记账的话告诉我。"}
+"what is a budget?" -> {"action":"chat","item":"","category":"NONE","days_ago":0,"period":"today","reply":"A budget is a plan for how much you can spend. I can check yours if you ask."}${hints ? `
 The user's own past entries that look related (prefer their category for the same thing): ${hints}` : ''}`;
 
 const clean = (s, max = 40) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -70,16 +73,39 @@ export function toIntent(form, text, today) {
       const seen = dateIn(text, today);
       const ago = Number.isInteger(form.days_ago) && form.days_ago >= 0 && form.days_ago <= 31 ? form.days_ago : 0;
       const date = seen !== today ? seen : FAR_PAST.test(text) ? E.addDays(today, -ago) : today;
-      return { type: 'expense', amount: money.amount, name: item, category: category ?? guessCategory(text) ?? 'OTHER', date };
+      return { type: 'expense', amount: money.amount, name: item, category: guessCategory(text) ?? category ?? 'OTHER', date }; // the words decide the category first (like amounts and days), the model's pick is the fallback
     }
     case 'check_purchase': return money ? { type: 'check', amount: money.amount, name: item || 'this' } : null;
     case 'set_goal': return money ? { type: 'goal', amount: money.amount, name: item || 'My goal' } : null;
     case 'add_wish': return money ? { type: 'wish', amount: money.amount, name: item || 'Something' } : null;
     case 'status': return { type: 'status' };
     case 'undo': return { type: 'undo' };
-    case 'spending': return { type: 'spending', period: PERIODS.includes(form.period) ? form.period : 'month', category: category ?? guessCategory(text) };
-    default: { const reply = clean(form.reply, 160); return reply ? { type: 'chat', reply } : null; } // chat
+    // The period is the rules' call, like amounts and days: a small model fills "today" in whenever the question names none.
+    case 'spending': return { type: 'spending', period: explicitPeriod(text) ?? 'month', category: category ?? guessCategory(text) };
+    default: return { type: 'chat', reply: clean(form.reply, 160) }; // chat: the model's own "this needs no action" (the reply may be empty)
   }
+}
+
+/**
+ * Two readers, one decision. `rules` is nlu.interpret(); `model` is understand() (null when the model is off, slow or broken).
+ *   - A RECORD is a write to your history, so it needs both readers to agree that it is one. If only one thinks so, nothing is written:
+ *     you get the "can I buy it?" card instead (which has an "I bought it" button), or whatever the other reader said.
+ *   - Everything else only reads or shows a card. A specific rule match is exact, so it wins; when the rules only have their weak default
+ *     ("item price" read as a purchase check) or nothing, the model's reading is used, and it can overrule that default.
+ *   - No model: the rules alone, as before.
+ */
+export function combine(rules, model) {
+  if (!model) return rules;
+  const r = rules?.type; const m = model.type;
+  if (r === 'expense' && m === 'expense') return model;
+  if (r === 'expense' || m === 'expense') {
+    const other = r === 'expense' ? model : rules;
+    if (other && other.type !== 'check') return other;
+    const amount = rules?.amount ?? model.amount; const name = rules?.name ?? model.name;
+    return { type: 'check', amount, name: name || 'this' };
+  }
+  if (rules && !rules.weak) return rules;
+  return model;
 }
 
 /** Asks the model what the sentence means. Null when it isn't ready, is too slow, or answers something unusable. */

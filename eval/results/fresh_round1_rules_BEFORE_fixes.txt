@@ -1,0 +1,21 @@
+pipeline: rules only
+
+=== FRESH (sealed until fixes were made)  (41 sentences) ===
+right kind of action   93%   right kind AND right details   88%   macro-F1   95%
+kind        precision  recall   found/wanted
+expense       100%      91%    10/11
+check          83%     100%    5/5   (1 wrongly)
+status         80%     100%    4/4   (1 wrongly)
+spending      100%     100%    4/4
+undo          100%     100%    3/3
+goal          100%     100%    1/1
+wish          100%     100%    1/1
+none           91%      83%    10/12   (1 wrongly)
+records it would save: 10, of which wrong (amount, day or not a record): 0  -> write precision  100%
+records that were there to find: 11, found as a record: 10  -> write recall   91%
+do-nothing sentences: 12, acted anyway: 2  -> false-action rate   17%
+   x "got coffee for 4.50 this morning"  wanted expense, got none  (wrong kind of action)
+   x "我买了两个包子 5块"  wanted expense, got expense  (c: got OTHER, wanted FOOD)
+   x "how much did I spend on movies this month"  wanted spending, got spending  (c: got undefined, wanted FUN)
+   x "call me at 5"  wanted none, got check  (wrong kind of action)
+   x "what is a budget?"  wanted none, got status  (wrong kind of action)

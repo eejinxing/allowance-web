@@ -32,7 +32,7 @@ test('a written currency wins over a stray number, and sen are sen', () => {
 });
 
 test('a purchase check: questions, wanting, or just "item price"', () => {
-  assert.deepEqual(read('Sneakers RM 120'), { type: 'check', amount: 12000, name: 'Sneakers' });
+  assert.deepEqual(read('Sneakers RM 120'), { type: 'check', amount: 12000, name: 'Sneakers', weak: true }); // a default reading, so marked weak
   assert.deepEqual(read('Can I afford sneakers RM 120?'), { type: 'check', amount: 12000, name: 'Sneakers' });
   assert.equal(read('I want a new phone RM 3000').type, 'check');
   assert.equal(read('我想买耳机 200块').type, 'check');
@@ -95,4 +95,58 @@ test('the chocolate sentences: record it, or ask whether you can buy it, with a 
   assert.deepEqual(read('你看一下我8块钱可不可以买巧克力'), { type: 'check', amount: 800, name: '巧克力' });
   assert.deepEqual(read('我8块钱可不可以买巧克力'), { type: 'check', amount: 800, name: '巧克力' });
   assert.deepEqual(read('can I buy chocolate for 8 ringgit?'), { type: 'check', amount: 800, name: 'Chocolate' });
+});
+
+// ---------- found by the evaluation (eval/): each of these was a real wrong answer ----------
+test('a number that is not a price is not read as one', () => {
+  for (const s of ['I walked 3 km today', 'I slept 8 hours last night', 'the meeting is at 3pm', 'I have 2 dogs and 1 cat', 'my phone number is 0123456789', 'I got 100% on my exam',
+    'spent 3 hours on this report', '我昨天睡了8个小时', '会议下午3点开始', '我今年25岁', 'it is 32 degrees today', 'room 305 please', 'bus 12 was late again', '3 people joined the call',
+    'the file is 12 MB', 'level 20 reached', 'call me at 5', 'the score was 3 to 1', 'I woke up at 3 this morning']) assert.equal(read(s), null, s);
+});
+
+test('a bare number that IS a price still works, including before on/for and with a date word after it', () => {
+  assert.equal(read('spent 15 on parking').amount, 1500);
+  assert.equal(read('paid 5 for the toll').amount, 500);   // "paid" ends in "id": that once made it look like "ID 5"
+  assert.equal(read('yesterday I paid 30 for the movie').amount, 3000);
+  assert.equal(read('got coffee for 4.50 this morning').amount, 450);
+  assert.equal(read('Sneakers 450').amount, 45000);
+  assert.equal(read('should I buy sneakers at 450?').amount, 45000);   // "at 450" is a price; "at 5" is a time
+});
+
+test('spelled-out numbers next to a currency word, and the days the rules can work out', () => {
+  assert.equal(read('I paid twenty ringgit for lunch').amount, 2000);
+  assert.equal(read('spent fifty bucks on a gift').amount, 5000);
+  assert.equal(read('paid two hundred and fifty dollars for rent').amount, 25000);
+  assert.equal(read('spent RM 12 on lunch last friday').date, '2026-11-06');   // 2026-11-08 is a Sunday: the most recent Friday
+  assert.equal(read('spent RM 12 on lunch 3 days ago').date, '2026-11-05');
+  assert.equal(read('上周五买了书 30块').date, '2026-10-30');                  // Friday of last Monday-to-Sunday week
+});
+
+test('past-tense wording the rules did not know, and Malay', () => {
+  assert.equal(read('ate nasi kandar for 12 ringgit').type, 'expense');
+  assert.equal(read('tapau mee goreng RM 7').type, 'expense');
+  assert.equal(read('took the LRT, RM 3.20').type, 'expense');
+  assert.equal(read('tadi beli kopi RM3').type, 'expense');
+  assert.equal(read('Grab to the office was RM 14').type, 'expense');
+  assert.equal(read('boleh beli kasut RM 200?').type, 'check');
+  assert.deepEqual(read('berapa saya belanja hari ini'), { type: 'spending', period: 'today', category: null });
+  assert.equal(read('padam yang tadi').type, 'undo');
+  assert.equal(read('baki hari ini').type, 'status');
+});
+
+test('questions about the budget: mine yes, "what is a budget" no; "what is left" is not "what did I spend"', () => {
+  assert.equal(read('am I still within budget?').type, 'status');
+  assert.equal(read('what is my budget for today?').type, 'status');
+  assert.equal(read('what is a budget?'), null);
+  assert.equal(read('还能花多少钱').type, 'status');
+  assert.equal(read('我这个月花了多少').type, 'spending');
+  assert.equal(read('what did I spend yesterday').period, 'yesterday');
+  assert.equal(read('wrong, remove it').type, 'undo');
+  assert.equal(read('I want to save RM 2000 for a laptop').type, 'goal');
+});
+
+test('category words also match their plurals', () => {
+  assert.equal(guessCategory('two movies'), 'FUN');
+  assert.equal(guessCategory('new shoes'), 'SHOPPING');
+  assert.equal(guessCategory('3 ice creams'), 'FOOD');
 });

@@ -43,14 +43,14 @@ test('a bad category, day or period is repaired instead of trusted', () => {
   assert.equal(toIntent(form({ action: 'record_expense', item: 'bubble tea', days_ago: 1 }), 'earlier I grabbed a bubble tea, 9 bucks', today).date, today);
   assert.equal(toIntent(form({ action: 'record_expense', days_ago: 3 }), 'spent RM 12 on lunch 3 days ago', today).date, '2026-11-05'); // an explicit "3 days ago": the model's count is used
   assert.equal(toIntent(form({ action: 'record_expense', days_ago: 0 }), '昨天打车花了18块', today).date, '2026-11-07'); // yesterday is the rules' word, whatever the model says
-  assert.equal(toIntent(form({ action: 'record_expense', days_ago: 5 }), '上周五买了书 30块', today).date, '2026-11-03');
+  assert.equal(toIntent(form({ action: 'record_expense', days_ago: 5 }), '上周五买了书 30块', today).date, '2026-10-30'); // 上周五 is worked out by the rules (Friday of last Monday-to-Sunday week), whatever the model says
   assert.equal(toIntent(form({ action: 'record_expense', days_ago: -2 }), 'spent RM 3', today).date, today);
   assert.equal(toIntent(form({ action: 'spending', period: 'decade' }), 'how much did I spend', today).period, 'month');
 });
 
 test('chat keeps only a short reply, and an empty reply is no answer', () => {
   assert.deepEqual(toIntent(form({ reply: 'Hi! Tell me what you spent.' }), 'hi', today), { type: 'chat', reply: 'Hi! Tell me what you spent.' });
-  assert.equal(toIntent(form({ reply: '   ' }), 'hi', today), null);
+  assert.deepEqual(toIntent(form({ reply: '   ' }), 'hi', today), { type: 'chat', reply: '' }); // the model said "no action needed"; it just has nothing to say
   assert.equal(toIntent(form({ reply: 'x'.repeat(500) }), 'hi', today).reply.length, 160);
 });
 
@@ -197,4 +197,43 @@ test('when there is no memory even then, the message says what to do; other erro
   try { await loadOllama('http://localhost:11434'); await assert.rejects(readReceipt('QUJD', today), /isn’t enough memory.*Close programs/); } finally { f.restore(); }
   f = fakeOllama([{ error: 'model requires more system memory than is available' }].map(() => ({ error: 'unsupported image format' })));
   try { await loadOllama('http://localhost:11434'); await assert.rejects(readReceipt('QUJD', today), /couldn’t read the photo: unsupported image format/); } finally { f.restore(); }
+});
+
+// ---------- combine: two readers, one decision ----------
+import { combine } from '../js/llm.js';
+const exp = (amount = 300) => ({ type: 'expense', amount, name: 'Coffee', category: 'FOOD', date: today });
+const chk = (weak) => ({ type: 'check', amount: 300, name: 'Coffee', ...(weak ? { weak: true } : {}) });
+
+test('combine: a record is written only when both readers say it is one', () => {
+  assert.deepEqual(combine(exp(), exp()), exp());                                                   // both agree: write
+  assert.deepEqual(combine(chk(true), exp()), { type: 'check', amount: 300, name: 'Coffee' });      // "Sneakers 450": the model alone can't write
+  assert.deepEqual(combine(exp(), chk()), { type: 'check', amount: 300, name: 'Coffee' });          // the rules alone can't either
+  assert.deepEqual(combine(exp(), { type: 'chat', reply: 'Nice!' }), { type: 'chat', reply: 'Nice!' }); // the model says it isn't spending: no write
+  assert.deepEqual(combine(null, exp()), { type: 'check', amount: 300, name: 'Coffee' });           // the rules saw nothing to record
+  assert.equal(combine(exp(), { type: 'status' }).type, 'status');
+});
+
+test('combine: with no model the rules decide alone, as they always did', () => {
+  assert.deepEqual(combine(exp(), null), exp());
+  assert.equal(combine(null, null), null);
+});
+
+test('combine: a specific rule match wins; the weak default can be overruled by the model', () => {
+  assert.deepEqual(combine({ type: 'status' }, { type: 'spending', period: 'today', category: null }), { type: 'status' });
+  assert.deepEqual(combine({ type: 'undo' }, { type: 'chat', reply: '' }), { type: 'undo' });
+  assert.deepEqual(combine(chk(false), { type: 'chat', reply: '' }), chk(false));                    // an explicit question stays a check
+  assert.deepEqual(combine(chk(true), { type: 'chat', reply: '' }), { type: 'chat', reply: '' });    // "item price" the model says is not a purchase: nothing happens
+  assert.deepEqual(combine(null, { type: 'status' }), { type: 'status' });                           // the rules had nothing; the model fills in
+});
+
+test('a spending question gets its period from the rules, never from the model', () => {
+  assert.equal(toIntent(form({ action: 'spending', period: 'today' }), 'how much have I spent on food', today).period, 'month');
+  assert.equal(toIntent(form({ action: 'spending', period: 'month' }), 'what did I spend yesterday', today).period, 'yesterday');
+  assert.equal(toIntent(form({ action: 'spending', period: 'month' }), 'berapa belanja minggu ini', today).period, 'week');
+});
+
+test('the words decide the category before the model does, and the model is the fallback', () => {
+  assert.equal(toIntent(form({ action: 'record_expense', item: 'Netflix', category: 'OTHER' }), 'subscribed to Netflix RM 55', today).category, 'FUN'); // the model said Other
+  assert.equal(toIntent(form({ action: 'record_expense', item: 'thing', category: 'HEALTH' }), 'spent RM 20 on a thing', today).category, 'HEALTH'); // no keyword: the model's pick
+  assert.equal(toIntent(form({ action: 'record_expense', item: 'thing', category: 'NONE' }), 'spent RM 20 on a thing', today).category, 'OTHER');   // neither: Other
 });

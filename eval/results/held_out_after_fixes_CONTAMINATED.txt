@@ -1,0 +1,18 @@
+pipeline: rules only
+
+=== HELD-OUT (new wording)  (109 sentences) ===
+right kind of action   98%   right kind AND right details   98%   macro-F1   99%
+kind        precision  recall   found/wanted
+expense       100%      94%    29/31
+check         100%     100%    15/15
+status        100%     100%    10/10
+spending      100%     100%    9/9
+undo          100%     100%    8/8
+goal          100%     100%    5/5
+wish          100%     100%    3/3
+none           93%     100%    28/28   (2 wrongly)
+records it would save: 29, of which wrong (amount, day or not a record): 0  -> write precision  100%
+records that were there to find: 31, found as a record: 29  -> write recall   94%
+do-nothing sentences: 28, acted anyway: 0  -> false-action rate    0%
+   x "yesterday I paid 30 for the movie"  wanted expense, got none  (wrong kind of action)
+   x "paid 5 for the toll"  wanted expense, got none  (wrong kind of action)

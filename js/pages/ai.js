@@ -232,23 +232,24 @@ function drop(turn) {
 }
 let thinking = false;
 
-/** Reads what you typed and does it. With the AI on, a small model on this device reads the sentence first; the rules are the
- *  safety net (and the only reader when the AI is off). Nothing is sent anywhere. */
+/** Reads what you typed and does it. Two readers: the rules, and (when the AI is on) a small model on this device. A record is only
+ *  written when both agree it is one (see llm.combine); the rules alone answer when the AI is off. Nothing is sent anywhere. */
 async function respond(text) {
   const zh = isChinese(text); const tr = (en, cn) => (zh ? cn : en);
   const note = (en, cn) => push({ kind: 'note', text: tr(en, cn) });
-  let intent = null;
+  const rules = interpret(text, S.today);
+  let model = null;
   if (llm.ready()) {
     const wait = { kind: 'note', text: tr('Thinking…', '思考中…') };
     thinking = true; push(wait);
     // Retrieval first: your own past entries that look like this sentence go to the model as context.
-    try { intent = await llm.understand(text, S.today, undefined, hint(recall(S.data, text))); } finally { thinking = false; drop(wait); } // null on any trouble
+    try { model = await llm.understand(text, S.today, undefined, hint(recall(S.data, text))); } finally { thinking = false; drop(wait); } // null on any trouble
   }
-  intent ??= interpret(text, S.today);
+  const intent = llm.combine(rules, model);
   // Nothing in the words said which category: use the one you gave the same thing before.
   if (intent?.type === 'expense' && intent.category === 'OTHER') intent.category = recall(S.data, intent.name || text)?.category ?? 'OTHER';
   switch (intent?.type) {
-    case 'chat': return push({ kind: 'note', text: intent.reply });
+    case 'chat': return intent.reply ? push({ kind: 'note', text: intent.reply }) : note(...HELP);
     case 'expense': {
       const entry = E.newEntry({ date: intent.date, amountMinor: intent.amount, category: intent.category, note: intent.name });
       try { commit((d) => E.saveEntry(d, entry, S.today), ''); } catch (err) { return note(err.message, `记不了：${err.message}`); }

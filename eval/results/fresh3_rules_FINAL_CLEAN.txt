@@ -1,0 +1,19 @@
+pipeline: rules only
+
+=== FRESH3 (CLEAN: sealed before the last fixes)  (50 sentences) ===
+right kind of action   94%   right kind AND right details   94%   macro-F1   95%
+kind        precision  recall   found/wanted
+expense       100%     100%    13/13
+check          80%     100%    8/8   (2 wrongly)
+status        100%      75%    3/4
+spending      100%     100%    5/5
+undo          100%     100%    3/3
+goal          100%     100%    2/2
+wish          100%     100%    1/1
+none           92%      86%    12/14   (1 wrongly)
+records it would save: 13, of which wrong (amount, day or not a record): 0  -> write precision  100%
+records that were there to find: 13, found as a record: 13  -> write recall  100%
+do-nothing sentences: 14, acted anyway: 2  -> false-action rate   14%
+   x "今天还有多少钱"  wanted status, got none  (wrong kind of action)
+   x "call 999 for help"  wanted none, got check  (wrong kind of action)
+   x "I moved here in 2019"  wanted none, got check  (wrong kind of action)

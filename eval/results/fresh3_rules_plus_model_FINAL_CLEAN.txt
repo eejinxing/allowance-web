@@ -1,0 +1,18 @@
+model: qwen2.5:3b  (loading it into memory first…)
+pipeline: rules + model, a record needs both to agree (qwen2.5:3b)
+
+=== FRESH3 (CLEAN: sealed before the last fixes)  (50 sentences) ===
+right kind of action  100%   right kind AND right details   98%   macro-F1  100%   model answered 50/50
+kind        precision  recall   found/wanted
+expense       100%     100%    13/13
+check         100%     100%    8/8
+status        100%     100%    4/4
+spending      100%     100%    5/5
+undo          100%     100%    3/3
+goal          100%     100%    2/2
+wish          100%     100%    1/1
+none          100%     100%    14/14
+records it would save: 13, of which wrong (amount, day or not a record): 0  -> write precision  100%
+records that were there to find: 13, found as a record: 13  -> write recall  100%
+do-nothing sentences: 14, acted anyway: 0  -> false-action rate    0%
+   x "subscribed to Netflix RM 55"  wanted expense, got expense  (c: got OTHER, wanted FUN)

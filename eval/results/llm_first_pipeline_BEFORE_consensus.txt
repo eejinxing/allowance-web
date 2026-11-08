@@ -1,0 +1,76 @@
+model: qwen2.5:3b  (loading it into memory first…)
+pipeline: model first, rules as the fallback (qwen2.5:3b)
+
+=== DEV (what it was built around)  (37 sentences) ===
+right kind of action   97%   right kind AND right details   97%   macro-F1   94%   model answered 36/37
+kind        precision  recall   found/wanted
+expense       100%     100%    13/13
+check         100%     100%    10/10
+status         75%     100%    3/3   (1 wrongly)
+spending      100%      50%    1/2
+undo          100%     100%    4/4
+goal          100%     100%    1/1
+wish          100%     100%    1/1
+none          100%     100%    3/3
+records it would save: 13, of which wrong (amount, day or not a record): 0  -> write precision  100%
+records that were there to find: 13, found as a record: 13  -> write recall  100%
+do-nothing sentences: 3, acted anyway: 0  -> false-action rate    0%
+   x "how much did I spend today?"  wanted spending, got status  (wrong kind of action)
+
+=== HELD-OUT (new wording; used for fixes after round 1)  (109 sentences) ===
+right kind of action   96%   right kind AND right details   94%   macro-F1   96%   model answered 103/109
+kind        precision  recall   found/wanted
+expense        97%     100%    31/31   (1 wrongly)
+check         100%      93%    14/15
+status         83%     100%    10/10   (2 wrongly)
+spending      100%      89%    8/9
+undo          100%      88%    7/8
+goal          100%     100%    5/5
+wish          100%     100%    3/3
+none           96%      96%    27/28   (1 wrongly)
+records it would save: 32, of which wrong (amount, day or not a record): 1  -> write precision   97%
+records that were there to find: 31, found as a record: 31  -> write recall  100%
+do-nothing sentences: 28, acted anyway: 1  -> false-action rate    4%
+   x "Sneakers 450"  wanted check, got expense  (wrong kind of action)
+   x "what did I spend yesterday"  wanted spending, got spending  (p: got today, wanted yesterday)
+   x "show me my food spending"  wanted spending, got spending  (p: got today, wanted month)
+   x "spending summary"  wanted spending, got status  (wrong kind of action)
+   x "remove the last one"  wanted undo, got none  (wrong kind of action)
+   x "bought nothing today"  wanted none, got status  (wrong kind of action)
+
+=== FRESH (used for fixes after round 1)  (41 sentences) ===
+right kind of action  100%   right kind AND right details   98%   macro-F1  100%   model answered 38/41
+kind        precision  recall   found/wanted
+expense       100%     100%    11/11
+check         100%     100%    5/5
+status        100%     100%    4/4
+spending      100%     100%    4/4
+undo          100%     100%    3/3
+goal          100%     100%    1/1
+wish          100%     100%    1/1
+none          100%     100%    12/12
+records it would save: 11, of which wrong (amount, day or not a record): 0  -> write precision  100%
+records that were there to find: 11, found as a record: 11  -> write recall  100%
+do-nothing sentences: 12, acted anyway: 0  -> false-action rate    0%
+   x "how much have I spent on food"  wanted spending, got spending  (p: got today, wanted month)
+
+=== FRESH2 (clean: written after those fixes)  (53 sentences) ===
+right kind of action   96%   right kind AND right details   96%   macro-F1   95%   model answered 50/53
+kind        precision  recall   found/wanted
+expense       100%     100%    15/15
+check         100%     100%    8/8
+status         83%     100%    5/5   (1 wrongly)
+spending      100%      80%    4/5
+undo          100%      67%    2/3
+goal          100%     100%    2/2
+wish          100%     100%    1/1
+none           93%     100%    14/14   (1 wrongly)
+records it would save: 15, of which wrong (amount, day or not a record): 0  -> write precision  100%
+records that were there to find: 15, found as a record: 15  -> write recall  100%
+do-nothing sentences: 14, acted anyway: 0  -> false-action rate    0%
+   x "berapa saya belanja hari ini"  wanted spending, got status  (wrong kind of action)
+   x "wrong, remove it"  wanted undo, got none  (wrong kind of action)
+
+=== over/under-fitting read ===
+macro-F1  dev 94%  vs  held-out 96%   gap -2 points
+small gap: no sign of overfitting

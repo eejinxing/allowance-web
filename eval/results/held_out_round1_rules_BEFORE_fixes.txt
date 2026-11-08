@@ -1,0 +1,53 @@
+pipeline: rules only
+
+=== HELD-OUT (new wording)  (109 sentences) ===
+right kind of action   68%   right kind AND right details   66%   macro-F1   77%
+kind        precision  recall   found/wanted
+expense        92%      71%    22/31   (2 wrongly)
+check          38%     100%    15/15   (24 wrongly)
+status        100%      70%    7/10
+spending       86%      67%    6/9   (1 wrongly)
+undo          100%      88%    7/8
+goal          100%      80%    4/5
+wish          100%     100%    3/3
+none           56%      36%    10/28   (8 wrongly)
+records it would save: 24, of which wrong (amount, day or not a record): 3  -> write precision   88%
+records that were there to find: 31, found as a record: 22  -> write recall   71%
+do-nothing sentences: 28, acted anyway: 18  -> false-action rate   64%
+   x "Grab to the office was RM 14"  wanted expense, got check  (wrong kind of action)
+   x "RM 9 for bubble tea just now"  wanted expense, got check  (wrong kind of action)
+   x "got 3 ice creams, RM 10.50"  wanted expense, got expense  (c: got OTHER, wanted FOOD)
+   x "I paid twenty ringgit for lunch"  wanted expense, got none  (wrong kind of action)
+   x "spent fifty bucks on a gift"  wanted expense, got none  (wrong kind of action)
+   x "spent RM 12 on lunch last friday"  wanted expense, got expense  (d: got 0, wanted 2)
+   x "我刚给手机充了50块钱"  wanted expense, got check  (wrong kind of action)
+   x "tadi beli kopi RM3"  wanted expense, got check  (wrong kind of action)
+   x "baru bayar RM 120 untuk bil telefon"  wanted expense, got check  (wrong kind of action)
+   x "bayar parking RM 3"  wanted expense, got check  (wrong kind of action)
+   x "makan nasi lemak RM 6 tadi"  wanted expense, got check  (wrong kind of action)
+   x "还能花多少钱"  wanted status, got spending  (wrong kind of action)
+   x "can I still spend today?"  wanted status, got none  (wrong kind of action)
+   x "berapa lagi baki hari ini"  wanted status, got none  (wrong kind of action)
+   x "what did I spend yesterday"  wanted spending, got none  (wrong kind of action)
+   x "show me my food spending"  wanted spending, got none  (wrong kind of action)
+   x "spending summary"  wanted spending, got none  (wrong kind of action)
+   x "padam yang tadi"  wanted undo, got none  (wrong kind of action)
+   x "I want to save RM 2000 for a laptop"  wanted goal, got check  (wrong kind of action)
+   x "I walked 3 km today"  wanted none, got check  (wrong kind of action)
+   x "I slept 8 hours last night"  wanted none, got check  (wrong kind of action)
+   x "the meeting is at 3pm"  wanted none, got check  (wrong kind of action)
+   x "I have 2 dogs and 1 cat"  wanted none, got check  (wrong kind of action)
+   x "my phone number is 0123456789"  wanted none, got check  (wrong kind of action)
+   x "I got 100% on my exam"  wanted none, got expense  (wrong kind of action)
+   x "spent 3 hours on this report"  wanted none, got expense  (wrong kind of action)
+   x "我昨天睡了8个小时"  wanted none, got check  (wrong kind of action)
+   x "会议下午3点开始"  wanted none, got check  (wrong kind of action)
+   x "我今年25岁"  wanted none, got check  (wrong kind of action)
+   x "it is 32 degrees today"  wanted none, got check  (wrong kind of action)
+   x "room 305 please"  wanted none, got check  (wrong kind of action)
+   x "bus 12 was late again"  wanted none, got check  (wrong kind of action)
+   x "3 people joined the call"  wanted none, got check  (wrong kind of action)
+   x "I ran 5 km in 30 minutes"  wanted none, got check  (wrong kind of action)
+   x "我走了5公里"  wanted none, got check  (wrong kind of action)
+   x "the file is 12 MB"  wanted none, got check  (wrong kind of action)
+   x "level 20 reached"  wanted none, got check  (wrong kind of action)

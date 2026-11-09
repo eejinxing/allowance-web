@@ -2,3 +2,8 @@
 node_modules/
 .DS_Store
 Thumbs.db
+ml/ckpt.pt
+ml/train.log
+ml/eval.log
+ml/ocr_rows.json
+ml/__pycache__/

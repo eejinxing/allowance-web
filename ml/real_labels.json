@@ -1,0 +1,12 @@
+{
+  "_note": "Hand-read from the nine distinct photos in Desktop/receipt (b4e1...(1).jpg is a byte-identical copy of b4e1...jpg). cents = the amount paid, null = the photo is not a money receipt. row = the printed total row, compared with the model's reading ignoring spaces.",
+  "5bb5aef0d1b7eca1f5e7b9447bcd5059.jpg": { "cents": null, "row": "TOTAL:32:13", "kind": "Receiptify (music list, durations)" },
+  "8c075ee20eb8704324ccc0769234c19c.jpg": { "cents": null, "row": "TOTAL:38:55", "kind": "Receiptify, phone screenshot" },
+  "98202560ba961866d52fd376aca9b08d.jpg": { "cents": null, "row": "TOTAL:36:11", "kind": "Receiptify" },
+  "Detailed-Grocery-Payment-Receipt-Samples.jpg": { "cents": 4630, "row": "TOTAL46.30", "kind": "Walmart till receipt, scan" },
+  "Itemized-Receipt.avif": { "cents": 9959, "row": "TOTAL$99.59", "kind": "clean template, USD" },
+  "OIP (1).webp": { "cents": 1440, "row": "TOTAL£14.40", "kind": "till receipt template, GBP" },
+  "OIP (2).webp": { "cents": null, "row": "TOTAL:557", "kind": "Receiptify (popularity score)" },
+  "OIP.webp": { "cents": 10760, "row": "SUBTOTAL$107.60", "kind": "supermarket mock-up; Sub Total is the only total printed" },
+  "b4e1df931c737f02ad5d0f93ee117413.jpg": { "cents": null, "row": "TOTAL:29:53", "kind": "Receiptify" }
+}

@@ -6,6 +6,7 @@ import { icon, swapIcon } from '../icons.js';
 import { esc, WD3, openSheet } from '../ui.js';
 import { interpret, isChinese, spendingTotal } from '../nlu.js';
 import * as llm from '../llm.js';
+import * as scanner from '../receiptscan.js';
 import { recall, describe, hint } from '../memory.js';
 
 // ---------- the picture: one bar per day, like a stats chart ----------
@@ -144,6 +145,7 @@ function receiptHTML(t, i) {
     ${lines ? `<p class="muted small">${lines}</p>` : ''}
     ${t.mismatch ? `<p class="muted small">The items add up to ${E.cash(t.itemsMinor)}, not the total. Tax or a service charge can explain that, so check it.</p>` : ''}
     ${t.dateKnown ? '' : '<p class="muted small">I couldn’t read the date, so it says today. Change it if needed.</p>'}
+    ${t.device ? `<p class="muted small">${t.device.source === 'largest' ? 'I couldn’t find a row that says TOTAL, so this is the biggest amount that isn’t cash or change.' : t.device.source === 'subtotal' ? 'Only a SUBTOTAL row was readable.' : 'From the row'} “${esc(t.device.text)}”.${t.device.sure ? '' : ' Some of that row was hard to read.'}</p>` : ''}
     <p class="muted small">Read from a photo, so it can be wrong. Check the amount, then save.</p>
     <div class="pill-row" style="margin-top:14px"><button class="btn ink" data-act="ai-receipt" data-turn="${i}">Check and save</button></div></div>`;
 }
@@ -294,19 +296,28 @@ async function photoToBase64(file, max = 1280) {
   canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height); bmp.close?.();
   return canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
 }
-/** The camera button: opens the camera or photo picker, or says what is missing. */
-export function pickReceipt() {
-  if (llm.canReadReceipts()) return document.getElementById('aifile')?.click();
-  say('note', llm.state.status === 'ready' && llm.state.backend === 'ollama'
-    ? 'Ollama is connected but has no vision model. In a terminal run “ollama pull qwen2.5vl:3b”, then reconnect in Settings.'
-    : 'Reading a receipt photo needs a vision model. In Settings, connect Ollama on your computer and pull one (“ollama pull qwen2.5vl:3b”). Until then, type the item and its price.');
+/** The camera button: opens the camera or photo picker. The reader that finds the total runs on this device, so it is always there. */
+export function pickReceipt() { document.getElementById('aifile')?.click(); }
+/** The on-device reader's answer, as a receipt the person can check (shape of llm.toReceipt, so the same card and entry sheet are used). */
+function deviceReceipt({ rows, total }) {
+  const words = rows.map((r) => r.text).join(' ');
+  return { merchant: '', date: S.today, dateKnown: false, amountMinor: total.cents, category: E.guessCategory(words), items: [], itemsMinor: 0, mismatch: false,
+    device: { source: total.source, text: total.text, sure: total.conf >= 0.6 } };
 }
 async function receiptFrom(file) {
   push({ kind: 'me', text: 'Receipt photo' });
-  const wait = { kind: 'note', text: 'Reading the receipt… on a laptop graphics card this can take one to three minutes.' };
+  const wait = { kind: 'note', text: 'Reading the receipt on this device…' };
   thinking = true; push(wait);
-  try { const receipt = await llm.readReceipt(await photoToBase64(file), S.today); drop(wait); push({ kind: 'receipt', ...receipt }); }
-  catch (err) { drop(wait); push({ kind: 'note', text: err.message }); } finally { thinking = false; }
+  try {
+    let receipt = null, why = '';
+    try { const read = await scanner.scan(file); if (read.total) receipt = deviceReceipt(read); } catch (err) { why = err.message; }
+    drop(wait);
+    if (!receipt && llm.canReadReceipts()) {
+      const slow = { kind: 'note', text: 'No clear total found. Asking the vision model on your computer; this can take a few minutes…' }; push(slow);
+      try { receipt = await llm.readReceipt(await photoToBase64(file), S.today); } finally { drop(slow); }
+    }
+    push(receipt ? { kind: 'receipt', ...receipt } : { kind: 'note', text: why || 'I couldn’t find a total on that receipt. Try a sharper, straight-on photo with the whole receipt in the frame, or type it.' });
+  } catch (err) { drop(wait); push({ kind: 'note', text: err.message }); } finally { thinking = false; }
 }
 
 export function askAfford() { push({ kind: 'me', text: 'Can I afford this today?' }); showStatus(false); }

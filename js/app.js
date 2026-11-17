@@ -2,7 +2,7 @@
 import * as E from './engine.js';
 import { S, TABS, go, render, setRenderer, commit, replaceData, savePrefs, toast, DEMO, leaveDemo, protectData } from './state.js';
 import { icon } from './icons.js';
-import { esc, mountForm, initialValues, confirmDialog, closeAllSheets, countUp, animateBars, fitAll, editBill, BILL_ICON, billMoney } from './ui.js';
+import { esc, mountForm, initialValues, confirmDialog, openSheet, closeAllSheets, countUp, animateBars, fitAll, editBill, BILL_ICON, billMoney } from './ui.js';
 import * as editors from './editors.js';
 import * as home from './pages/home.js';
 import * as historyPage from './pages/history.js';
@@ -223,7 +223,7 @@ const ACT = {
   'clear-filters': () => { Object.assign(S.ui.history, { q: '', cat: 'ALL' }); render({ keepAnimations: true }); },
   account: (el) => editors.openAccount(el.dataset.id),
   adjust: () => { const list = S.data.accounts.filter((a) => !a.archived); const a = list[S.ui.acct ?? 0] ?? list[0]; if (a) editors.openBalance(a.id); },
-  transfer: () => editors.openTransfer(),
+  transfer: () => openSheet({ title: 'Transfer unavailable', noSave: true, fields: [{ t: 'note', text: () => 'Transfers are not available yet. Please check back later.' }] }),
   eye: (el) => { const h = (S.ui.hidden ??= {}); h[el.dataset.id] = !h[el.dataset.id]; render({ keepAnimations: true }); },
   'wallet-open': () => { S.ui.walletOpen = !S.ui.walletOpen; render({ keepAnimations: true }); },
   'goto-card': (el) => { S.ui.walletOpen = false; render({ keepAnimations: true }); const d = document.getElementById('deck'); const c = d?.querySelector('.acct'); if (c) d.scrollTo({ left: Number(el.dataset.i) * (c.offsetWidth + 8) }); },

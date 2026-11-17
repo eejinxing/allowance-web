@@ -87,17 +87,6 @@ export function openBalance(id) {
   openSheet({ title: `Adjust ${account.name} balance`, fields, onSave: (v) => commit((d) => E.setBalance(d, id, E.parseMoney(v.amount), today()), 'Balance adjusted') });
 }
 
-export function openTransfer() {
-  const accts = S.data.accounts.filter((a) => !a.archived);
-  const fields = [
-    { t: 'note', text: () => 'Top-ups, withdrawals or moving money between accounts. Not counted as spending and doesn’t change your daily budget.' },
-    { k: 'amount', t: 'money', label: 'Transfer amount (RM)', v: '' },
-    { k: 'from', t: 'chips', label: 'From', v: accts[0]?.id ?? '', opts: accountOpts(false) },
-    { k: 'to', t: 'chips', label: 'To', v: accts[1]?.id ?? '', opts: accountOpts(false) },
-  ];
-  openSheet({ title: 'Transfer between accounts', fields, onSave: (v) => commit((d) => E.transfer(d, v.from, v.to, E.positive(v.amount), today()), 'Transfer recorded') });
-}
-
 // ---------- funds, goals, wishes ----------
 export function openTarget(kind, id = '') {
   const fund = S.data.funds.find((f) => f.id === id); const goal = S.data.goals.find((g) => g.id === id); const wish = S.data.wishes.find((w) => w.id === id);
@@ -139,7 +128,7 @@ export function openMove(kind, id) {
       { t: 'note', text: (v) => { let p = 0; try { p = E.positive(v.amount); } catch { /* typing */ }
         return `The fund pays ${E.cash(Math.min(saved, p))}; the remaining ${E.cash(Math.max(0, p - saved))} comes out of your daily budget.${saved > p && p > 0 ? ` The leftover ${E.cash(saved - p)} goes back to your spendable budget.` : ''}`; } }]
       : [{ t: 'note', text: () => (kind === 'fundin' ? 'Setting aside lowers your spendable budget and releasing raises it. Account balances don’t change.'
-        : 'Tracks money you’ve already saved without touching your daily budget. Record a transfer if money actually moves between accounts.') }]),
+        : 'Tracks money you’ve already saved without touching your daily budget. Account-to-account transfers are not available yet.') }]),
   ];
   const title = kind === 'buy' ? `Bought: ${fund.name}` : (fund?.name ?? goal?.name);
   openSheet({ title, fields, onSave: (v) => {

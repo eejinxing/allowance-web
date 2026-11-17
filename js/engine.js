@@ -469,15 +469,6 @@ export function deleteEntry(data, entryId) {
   return next;
 }
 
-export function transfer(data, from, to, amount, date) {
-  require(from && to && from !== to, 'Choose two different accounts');
-  require(amount > 0, 'Enter an amount greater than zero');
-  require(data.accounts.some((a) => a.id === from && !a.archived) && data.accounts.some((a) => a.id === to && !a.archived));
-  const out = { ...data, entries: [...data.entries, newEntry({ date, amountMinor: amount, type: 'TRANSFER', note: 'Account transfer', accountId: from, toAccountId: to })] };
-  validate(out);
-  return out;
-}
-
 export function setBalance(data, accountId, balance, date) {
   const account = data.accounts.find((a) => a.id === accountId);
   const delta = balance - accountBalance(data, account);

@@ -1,7 +1,7 @@
 // Budget assistant: say "spent RM3 on coffee" or "Sneakers RM 120" (English or 中文) and it records it or reads your budget.
-// It runs on-device with plain rules (see nlu.js): no AI service, no key, no cost, and it works offline.
+// Text understanding runs locally; microphone transcription uses the browser's speech service.
 import * as E from '../engine.js';
-import { S, commit, render } from '../state.js';
+import { S, commit, render, savePrefs } from '../state.js';
 import { icon, swapIcon } from '../icons.js';
 import { esc, WD3, openSheet } from '../ui.js';
 import { interpret, isChinese, spendingTotal } from '../nlu.js';
@@ -176,13 +176,18 @@ export function view() {
         <button class="td-row" data-act="ai-try" data-q="Movie RM 25"><span class="td-ic">${icon('Target', 22)}</span><span class="td-tx"><b>Turn a want into a goal</b><small>Save up for it instead of buying it now.</small></span></button></div>
       <div id="chat" style="align-self:stretch;display:flex;flex-direction:column;gap:26px">${S.chat.map(turnHTML).join('')}</div>
       <div class="muted small" id="aistate">${aiStateText()}</div></div>
-    <div class="ai-input"><form id="aiform" autocomplete="off"><button type="button" class="ghost" data-act="ai-camera" aria-label="Read a receipt photo">${icon('Camera', 28)}</button>
+    <div class="ai-input"><div class="ai-voice-options"><label for="ai-voice-lang">Voice <select id="ai-voice-lang" aria-label="Voice language">${[['zh-CN', '普通话'], ['en-MY', 'English'], ['yue-Hant-HK', '粵語'], ['ms-MY', 'Bahasa Melayu']].map(([value, name]) => `<option value="${value}" ${value === (S.prefs.voiceLang || 'zh-CN') ? 'selected' : ''}>${name}</option>`).join('')}</select></label><span id="ai-voice-status" role="status">Check text before sending</span></div><form id="aiform" autocomplete="off"><button type="button" class="ghost" data-act="ai-camera" aria-label="Read a receipt photo">${icon('Camera', 28)}</button>
       <input type="file" id="aifile" accept="image/*" capture="environment" hidden>
       <input id="aiq" placeholder="Ask anything..." aria-label="Ask the budget assistant" enterkeyhint="send"><button type="button" class="ghost" data-act="ai-voice" aria-label="Voice input">${icon('Waveform', 26)}</button>
       <button class="send" aria-label="Send">${icon('ArrowUp', 26)}</button></form></div>`;
 
   return { html, cls: 'ai', mount(page, { animate } = {}) {
     const input = page.querySelector('#aiq'); const chat = page.querySelector('#chat'); const scroll = page.querySelector('#scroll');
+    page.querySelector('#ai-voice-lang').addEventListener('change', (e) => {
+      listening?.abort();
+      S.prefs.voiceLang = e.target.value;
+      savePrefs();
+    });
     const add = (t) => { S.chat.push(t); chat.insertAdjacentHTML('beforeend', turnHTML(t, S.chat.length - 1)); setTimeout(() => scroll.scrollTo({ top: scroll.scrollHeight, behavior: 'smooth' }), 80); return S.chat.length - 1; };
     page.__addTurn = add;
     // The AI model, when it was turned on in Settings, starts loading in the background; the line under the chat says how it is going.
@@ -356,29 +361,45 @@ export function buyAndPayBack(name, amount, turn) {
 
 // ---------- voice input ----------
 let listening = null;
-/** Tap to start, tap again to stop. What you say fills the box and is sent when you stop talking, like “sneakers 120 ringgit”. */
+/** Tap to start/stop; leave the transcript in the box for review before sending. */
 export function voice(btn) {
   const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Rec) return say('note', 'This browser can’t do voice input. Use the microphone on your keyboard, or type the item and its price.');
   if (listening) return listening.stop();
   const page = document.getElementById('page'); const input = page?.querySelector('#aiq'); const form = page?.querySelector('#aiform');
   if (!input || !form) return;
-  const rec = new Rec(); let heard = ''; let failed = false;
-  rec.lang = document.documentElement.lang === 'en' ? 'en-MY' : navigator.language || 'en-US';
+  const rec = new Rec(); let heard = '';
+  const status = page.querySelector('#ai-voice-status');
+  const draft = input.value.trim();
+  const reset = () => {
+    if (listening && listening !== rec) return;
+    if (listening === rec) listening = null;
+    btn.classList.remove('listening'); btn.setAttribute('aria-pressed', 'false');
+    input.placeholder = 'Ask anything...';
+    if (status?.isConnected) status.textContent = heard ? 'Check the words and amount, then send' : 'Check text before sending';
+  };
+  rec.lang = page.querySelector('#ai-voice-lang')?.value || S.prefs.voiceLang || 'zh-CN';
   rec.interimResults = true; rec.continuous = false;
-  rec.onstart = () => { btn.classList.add('listening'); input.placeholder = 'Listening…'; };
-  rec.onresult = (e) => { heard = Array.from(e.results).map((r) => r[0].transcript).join(' ').trim(); input.value = heard; input.dispatchEvent(new Event('input')); };
+  rec.onstart = () => { btn.classList.add('listening'); btn.setAttribute('aria-pressed', 'true'); input.placeholder = 'Listening…'; if (status) status.textContent = 'Listening… tap again to stop'; };
+  rec.onresult = (e) => {
+    if (!input.isConnected) return rec.abort();
+    heard = Array.from(e.results).map((r) => r[0].transcript).join(' ').trim();
+    input.value = [draft, heard].filter(Boolean).join(' ');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  };
   rec.onerror = (e) => {
-    failed = true;
-    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') say('note', 'Microphone is off for this page. Allow it in your browser settings, or use the microphone on your keyboard. (It can’t work from a home-screen shortcut.)');
+    reset();
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') say('note', 'Microphone access was denied. Allow microphone access in your browser settings, or use your keyboard’s voice input.');
+    else if (e.error === 'network') say('note', 'The browser’s speech service could not connect. Check your connection or use your keyboard’s voice input.');
+    else if (e.error === 'language-not-supported') say('note', 'This browser’s speech service does not support the selected language. Choose another language or use your keyboard’s voice input.');
     else if (e.error !== 'aborted') say('note', e.error === 'no-speech' ? 'I didn’t hear anything. Tap the microphone and try again.' : 'Voice input stopped. Try again, or type it.');
   };
   rec.onend = () => {
-    listening = null; btn.classList.remove('listening'); input.placeholder = 'Ask anything...';
-    if (heard && !failed) form.requestSubmit();
+    reset();
+    // Never submit a financial instruction just because speech recognition stopped.
   };
   listening = rec;
-  try { rec.start(); } catch { listening = null; say('note', 'Couldn’t start the microphone. Try again.'); }
+  try { rec.start(); } catch { reset(); say('note', 'Couldn’t start the microphone. Try again.'); }
 }
 
 /** Turns the thing into a savings goal for its price, so it shows up on the Goals page. */

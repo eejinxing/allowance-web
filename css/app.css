@@ -268,6 +268,9 @@ button { border: 0; background: none; padding: 0; cursor: pointer; }
 .ai-input .ghost.listening { color: #ff5a5f; animation: plBreath 1.2s ease-in-out infinite; }
 .verdict { align-self: stretch; padding: 2px 2px 0; color: var(--ink); animation: rise .4s var(--ease) both; } .verdict p { margin: 8px 0 0; font-size: 16px; } .verdict h4 { margin: 4px 0 0; font-size: 26px; font-weight: 800; letter-spacing: -.6px; }
 .ai-input { flex: none; padding: 10px 16px calc(10px + var(--sb)); background: var(--bg); }
+.ai-voice-options { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 8px; color: var(--muted); font-size: 12px; }
+.ai-voice-options label { display: inline-flex; align-items: center; gap: 6px; }
+.ai-voice-options select { min-height: 32px; max-width: 144px; border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; background: var(--surface); color: var(--text); font-size: 16px; }
 .ai-input form { display: flex; align-items: center; height: 68px; border-radius: 99px; border: 1px solid var(--line); background: var(--card); padding: 0 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, .08); }
 .ai-input input { flex: 1; border: 0; outline: 0; background: none; font-size: 18px; padding: 0 8px; min-width: 0; }
 .send { width: 52px; height: 52px; border-radius: 50%; background: var(--yellow); color: var(--ink); display: grid; place-items: center; flex: none; }
@@ -361,66 +364,71 @@ button { border: 0; background: none; padding: 0; cursor: pointer; }
 .pl-tabs { display: flex; gap: 4px; padding: 4px; margin-bottom: 14px; border-radius: 999px; background: var(--surface); }
 .pl-tabs button { flex: 1; height: 48px; border-radius: 999px; font-size: 15px; font-weight: 500; color: var(--muted); border: 1.5px solid transparent; transition: background .2s, color .2s; }
 .pl-tabs button.on { background: var(--card); border-color: var(--line); color: var(--text); font-weight: 700; box-shadow: 0 2px 8px rgba(0, 0, 0, .05); }
-/* The calendar is a plain dark card (no glow), dark in both themes. */
-.pl-cal { position: relative; padding: 14px 12px 54px; border-radius: 28px; color: #fff; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
-  background: linear-gradient(180deg, #1a1a19, #111110); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07), 0 18px 40px -18px rgba(0, 0, 0, .55); }
-.pl-cal-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.pl-cal-h b { font-size: 17px; font-weight: 600; }
-.pl-arrow { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: #fff; transition: background .2s, transform .15s var(--ease); }
-.pl-arrow:active { background: rgba(255, 255, 255, .12); transform: scale(.92); }
+/* A light calendar panel overlaps the warm yellow amount card. */
+.pl-cal { position: relative; isolation: isolate; overflow: hidden; border-radius: 28px; color: #24262c; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  background: #ffdf62; box-shadow: 0 12px 32px -20px rgba(69, 56, 0, .28); }
+.pl-calendar-panel { position: relative; z-index: 1; margin-top: -28px; padding: 16px 16px 52px; border-radius: 28px; background: #fff; }
+.pl-cal-h { display: flex; align-items: center; justify-content: space-between; }
+.pl-cal-h b { font-size: 14px; font-weight: 700; letter-spacing: -.3px; }
+.pl-month-nav { display: flex; }
+.pl-arrow { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: #555964; transition: background .2s, transform .15s var(--ease); }
+.pl-arrow:active { background: #f0f0f3; transform: scale(.92); }
 .pl-arrow:disabled { opacity: .25; }
 .pl-wk, .pl-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-.pl-wk span { padding: 4px 0; text-align: center; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, .4); }
-.pl-wk { margin-top: clamp(22px, 4.5dvh, 40px); }
-.pl-grid { margin-top: 8px; }
+.pl-wk span { padding: 4px 0; text-align: center; font-size: 12px; font-weight: 500; color: #868892; }
+.pl-wk { margin-top: 4px; }
+.pl-grid { margin-top: 0; }
 
-/* Days are plain centred numbers, like a printed calendar. Under each number there is room for a mark:
-   a softly breathing yellow dot = you spent, a red dash = a no-spend day. The marks are drawn by the <i> so they sit in the flow with a fixed gap. */
-.pl-d { --mark-gap: 7px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--mark-gap);
-  aspect-ratio: 1 / 1.12; border-radius: 16px; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, .92);
-  touch-action: manipulation; transition: transform .18s var(--ease), background-color .25s var(--ease); }
+/* Marked dates replace their numeral with a monochrome badge; unmarked dates stay plain. */
+.pl-d { position: relative; display: grid; place-items: center; min-width: 0; min-height: 44px;
+  aspect-ratio: 1 / 1.05; border: 1px solid #ececf0; border-radius: 10px; background: #f5f5f7; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; color: #666a73;
+  touch-action: manipulation; transition: transform .18s var(--ease), background-color .2s var(--ease); }
 .pl-d b { position: relative; font-weight: inherit; line-height: 1; }
-.pl-d i { display: block; width: 6px; height: 6px; border-radius: 50%; background: transparent; }
-.pl-d.out, .pl-d.off { color: rgba(255, 255, 255, .22); }
-.pl-d.out::after, .pl-d.off::after { content: ''; height: 6px; } /* keeps the numbers of neighbouring months on the same line */
-.pl-d.planned { color: #fff; }
-/* Spent: a yellow dot that breathes (scale + glow), each day slightly out of step so the grid feels alive, not mechanical. */
-.pl-d.spent i { background: var(--yellow); animation: plBreath 2.8s ease-in-out infinite; animation-delay: calc(var(--n, 0) * -.37s); }
+.pl-d.out, .pl-d.off { color: #c5c7ce; background: #fafafc; border-color: #f1f1f4; }
+.pl-day-icon { display: grid; place-items: center; width: 32px; height: 32px; max-width: 100%; border-radius: 50%; background: #17181b; color: #fff; }
+.pl-day-icon img { display: block; width: 36px; height: auto; max-width: calc(100% + 4px); aspect-ratio: 1; object-fit: contain; }
+.pl-day-icon:has(img) { background: transparent; }
+.pl-day-icon .ic { width: 22px; height: 22px; }
+.pl-no-mark { font-size: 14px; color: var(--muted); }
 @keyframes plBreath {
   0%, 100% { transform: scale(.85); opacity: .7; box-shadow: 0 0 0 0 rgba(255, 216, 61, 0); }
   50% { transform: scale(1.15); opacity: 1; box-shadow: 0 0 10px 2px rgba(255, 216, 61, .55); } }
-/* No spend: a short red dash with a faint glow. */
-.pl-d.free i { width: 16px; height: 3px; border-radius: 2px; background: #ff5a5f; box-shadow: 0 0 8px rgba(255, 90, 95, .55); }
-/* Only this much (budget left unused): the same dash in teal. */
-.pl-d.lite i { width: 16px; height: 3px; border-radius: 2px; background: #5FD2BA; box-shadow: 0 0 8px rgba(95, 210, 186, .55); }
 /* What the three marks mean, one line under the grid. */
-.pl-info { position: absolute; right: 14px; bottom: 12px; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: rgba(255, 255, 255, .55); transition: transform .15s var(--ease), color .2s; } .pl-info:active { transform: scale(.9); color: #fff; }
+.pl-info { position: absolute; right: 12px; bottom: 4px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: #898c95; transition: transform .15s var(--ease), color .2s; } .pl-info:active { transform: scale(.9); color: #17181b; }
 .pl-key { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px 16px; margin-top: 16px; font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, .6); }
 .pl-key span { display: inline-flex; align-items: center; gap: 7px; }
 .pl-key i { display: block; flex: none; }
 .pl-key i.free { width: 14px; height: 3px; border-radius: 2px; background: #ff5a5f; }
 .pl-key i.lite { width: 14px; height: 3px; border-radius: 2px; background: #5FD2BA; }
 .pl-key i.full { width: 7px; height: 7px; border-radius: 50%; background: var(--yellow); }
-.pl-chip.lite { background: rgba(95, 210, 186, .18); color: #5FD2BA; }
+@font-face { font-family: 'Anton'; src: url('../fonts/Anton-Regular.ttf') format('truetype'); font-style: normal; font-weight: 400; font-display: swap; }
 /* The amount at the top is a real field: tap it and type. */
-.pl-in { font: inherit; letter-spacing: inherit; color: inherit; background: none; border: 0; outline: 0; padding: 0; margin: 0; text-align: center; min-width: 2ch; caret-color: var(--yellow); -webkit-appearance: none; appearance: none; }
-.pl-rm { align-self: center; margin-right: 6px; font-size: 20px; font-weight: 600; letter-spacing: 0; color: rgba(255, 255, 255, .55); }
+.pl-cal { -webkit-tap-highlight-color: transparent; }
+.pl-in { font: inherit; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: inherit; color: transparent; -webkit-text-fill-color: transparent; background: none; border: 0; outline: 0; padding: 8px 12px; margin: 0; text-align: center; min-width: 0; max-width: 100%; min-height: 48px; overflow: hidden; scrollbar-width: none; caret-color: transparent; -webkit-appearance: none; appearance: none; }
+.pl-in::-webkit-scrollbar { display: none; }
+.pl-in::selection { background: transparent; color: transparent; }
+.pl-in:focus-visible { outline: none; }
+.pl-rm { position: absolute; right: calc(100% + 2px); bottom: 8px; font-size: .28em; font-weight: 400; letter-spacing: -.5px; color: inherit; }
 /* Today: just the number in yellow, no underline. */
-.pl-d.today b { color: var(--yellow); }
+.pl-d.today { border-color: #8b8d95; }
+.pl-d.today b { color: #25272e; font-weight: 700; }
 /* Selected: a soft frosted pill behind the day. */
-.pl-d.sel { background: rgba(255, 255, 255, .09); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
+.pl-d.sel { background: #e5e6eb; box-shadow: inset 0 0 0 1px #262830; }
+.pl-d:focus-visible, .pl-arrow:focus-visible { outline: 2px solid #484b59; outline-offset: 2px; }
 .pl-d:not(.out):not(.off):active { transform: scale(.9); }
 @media (prefers-reduced-motion: reduce) { .pl-d i, .pl-d.spent i { animation: none !important; } }
-.pl-sel { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; margin: clamp(10px, 2.5dvh, 24px) 0 0; padding: 10px 8px 12px; border-radius: 20px; color: #fff; text-align: center; }
-button.pl-sel:active { background: rgba(255, 255, 255, .07); }
-.pl-sel-d { font-size: 13px; font-weight: 500; color: rgba(255, 255, 255, .6); }
-.pl-sel-a { display: inline-flex; align-items: center; gap: 8px; font-size: 38px; font-weight: 800; letter-spacing: -1.2px; line-height: 1.1; }
-.pl-sel-a .ic { color: rgba(255, 255, 255, .4); margin-top: 6px; }
-.pl-sel.off .pl-sel-a { color: rgba(255, 255, 255, .35); }
-.pl-chip { padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; background: rgba(255, 255, 255, .1); color: rgba(255, 255, 255, .75); }
-.pl-chip.spent { background: rgba(255, 216, 61, .18); color: var(--yellow); }
-.pl-chip.free { background: rgba(255, 90, 95, .18); color: #ff5a5f; }
-.pl-chip.planned { background: rgba(255, 255, 255, .14); color: #fff; }
+.pl-sel { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; margin: 0; padding-bottom: 28px; background: linear-gradient(145deg, #ffed78, #f6c43a 48%, #eea009); color: #17180f; text-align: center; }
+.pl-day-card { position: relative; width: 100%; color: #fff; }
+.pl-day-main { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; min-height: 300px; padding: 32px 16px; }
+.pl-amount-wrap { container-type: inline-size; display: flex; justify-content: center; width: 100%; }
+.pl-sel-a { position: relative; display: flex; align-items: baseline; justify-content: center; width: max-content; max-width: calc(100% - 40px); min-height: 64px; padding: 0; color: #102e20; font-family: 'Anton', Impact, 'Arial Narrow', sans-serif; font-size: clamp(22px, calc(110cqi / var(--amount-digits, 4)), 64px); font-weight: 400; letter-spacing: -.8px; line-height: 1.15; }
+.pl-amount-display { position: absolute; inset: 0; display: grid; place-items: end center; padding-bottom: 10px; font: inherit; line-height: 1; letter-spacing: inherit; white-space: nowrap; color: #102e20; pointer-events: none; user-select: none; -webkit-user-select: none; }
+.pl-rm, .pl-amount-display { -webkit-text-stroke: 20px #20d77a; paint-order: stroke fill; }
+.pl-rm { -webkit-text-stroke-width: 8px; }
+.pl-sel.off .pl-sel-a { color: #8a958d; }
+.pl-chip { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; min-width: min(168px, 100%); max-width: 100%; min-height: 32px; padding: 8px 24px; border-radius: 999px; background: #fff; color: #151713; font-family: 'Anton', Impact, sans-serif; font-size: 12px; font-weight: 400; line-height: 16px; }
+.pl-suggest-label { color: inherit; }
+.pl-chip strong { font-size: inherit; font-weight: 400; font-variant-numeric: tabular-nums; }
 .pl-hint { margin: 12px 8px 0; text-align: center; font-size: 13px; color: var(--muted); }
 .pl-sub { margin: 24px 2px 10px; font-size: 15px; font-weight: 500; color: var(--muted); }
 .pl-row { display: flex; align-items: center; gap: 14px; width: 100%; margin-bottom: 10px; padding: 16px 14px; border-radius: 22px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 2px 10px rgba(0, 0, 0, .04); text-align: left; transition: transform .15s var(--ease); }
@@ -816,9 +824,13 @@ button.pl-sel:active { background: rgba(255, 255, 255, .07); }
 .wl-spend-k { font-size: 13px; font-weight: 600; letter-spacing: .4px; text-transform: none; color: rgba(20, 20, 20, .5); opacity: 1; }
 
 /* The marks explained, in the info sheet. */
-.mk-list { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 8px; }
-.mk-row { display: flex; align-items: flex-start; gap: 14px; } .mk-row b { display: block; font-size: 16px; } .mk-row p { margin: 2px 0 0; font-size: 14px; color: var(--muted); }
-.mk-mark { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; background: #161616; }
+.mk-list { display: flex; flex-direction: column; gap: 16px; padding: 4px 0 8px; }
+.mk-rows { display: grid; grid-auto-rows: 1fr; gap: 8px; }
+.mk-row { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; gap: 16px; min-height: 72px; padding: 8px 0; } .mk-row b { display: block; font-size: 15px; line-height: 20px; } .mk-row p { margin: 4px 0 0; font-size: 13px; line-height: 20px; color: var(--muted); }
+.mk-mark { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: #17181b; }
+.mk-mark .pl-day-icon { width: 32px; height: 32px; background: transparent; }
+.mk-mark .pl-day-icon img { width: 36px; height: 36px; }
+.mk-mark .pl-no-mark { color: #f0f0f2; font-size: 14px; line-height: 20px; }
 .mk-mark i { display: block; } .mk-free { width: 16px; height: 3px; border-radius: 2px; background: #ff5a5f; } .mk-lite { width: 16px; height: 3px; border-radius: 2px; background: #5FD2BA; }
 .mk-full { width: 7px; height: 7px; border-radius: 50%; background: var(--yellow); } .mk-none { width: 16px; height: 3px; border-radius: 2px; border: 1px dashed rgba(255, 255, 255, .35); height: 0; }
 .mk-tip { margin: 2px 0 0; font-size: 13px; color: var(--muted); }

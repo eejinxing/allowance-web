@@ -6,7 +6,7 @@ There is no account, no server and no build step. Your data stays in your browse
 
 ## The budget assistant
 
-Open the AI tab and talk to it in plain English or 中文, type or use the microphone. It costs nothing, needs no API key and has no usage limits: nothing is sent to any online AI service. There are three layers, and each one is a fallback for the one above it:
+Open the AI tab and talk to it in plain English or 中文, type or use the microphone. Text understanding costs nothing, needs no API key and has no usage limits: the text models run locally. Microphone transcription uses the browser’s speech service, which may send audio to its provider and require an internet connection. There are three text-understanding layers, and each one is a fallback for the one above it:
 
 1. **Ollama on your computer** (`js/llm.js`), optional and the best: in Settings, *Connect to Ollama* uses the models you already run with [Ollama](https://ollama.com) (`qwen2.5:3b` works well; about 0.6 s per sentence on a 4 GB GPU). Add a vision model (`ollama pull qwen2.5vl:3b`, 3.2 GB) and the camera button reads **receipt photos**: shop, date (DD/MM/YYYY is read correctly), the total paid (not the cash or change lines), and the items. Reading is slow on a small graphics card (2 to 4 minutes measured on a 4 GB laptop GPU; much faster on a bigger one), so the app frees the text model's memory first and brings it back afterwards. Reachable from a page on the same computer; a phone would also need `OLLAMA_HOST=0.0.0.0` and an http page.
 2. **A small model in the browser**, optional: *Download and run in this browser* fetches Qwen2.5 1.5B (about 1 GB, once) and runs it through WebGPU with [WebLLM](https://github.com/mlc-ai/web-llm) (loaded from jsDelivr, version pinned). It's for phones, and can't read photos.
@@ -27,6 +27,12 @@ The model only *reads*: it fills in a fixed form (what you want, the item, the c
 | The camera button, with a vision model connected | Reads a receipt photo (shop, date, total, items) and opens a filled-in entry for you to check and save |
 
 Amounts are never guessed: if there is no readable price, nothing is recorded.
+
+## Voice input
+
+Voice defaults to Mandarin (`zh-CN`); choose another recognition language beside the microphone. Transcripts stay in the input box so you can check words and prices before pressing Send. Recording never submits an expense automatically.
+
+Recognition depends on the browser, its microphone permission and its speech service. Unsupported languages, connection failures and blocked permissions have separate messages. The optional Qwen model understands text; it does not transcribe audio. No dedicated multilingual speech model is bundled, and browser recognition has not been measured for Mandarin mixed with English on a real microphone.
 
 ## How accurate is it? (measured, with the limits)
 

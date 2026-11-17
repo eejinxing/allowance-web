@@ -1,9 +1,7 @@
 // Plan: a month calendar where every day wears a mark for how it went, the plans coming up, and a Budget tab with where the money
 // comes from and your weekday pattern.
-// Every day has a mark you choose (it is never worked out from the amount): none, red, teal or yellow.
-//   red dash   = nothing spent; the daily bills aren't counted that day
-//   teal dash  = only the amount at the top; the daily bills aren't counted that day
-//   yellow dot = the daily bills are counted, plus the amount at the top
+// Stored RED/TEAL/YELLOW marks keep their original budget rules, displayed as monochrome badges.
+//   crossed wallet = no spending, checked wallet = only the planned amount, coin = daily bills + extra.
 // Tap a day to select it, tap it again to switch its mark, tap the amount at the top to type it.
 // A past day's amount is the expense you logged; today and later take it as a plan.
 import * as E from '../engine.js';
@@ -18,6 +16,22 @@ const HEAD = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const MARK_MODE = { RED: 'free', TEAL: 'lite', YELLOW: 'full' }; const MODE_MARK = { free: 'RED', lite: 'TEAL', full: 'YELLOW' };
 const NEXT = { none: 'free', free: 'lite', lite: 'full', full: 'none' }; // the order a tap switches a day through
 const MARK_CLASS = { free: 'free', lite: 'lite', full: 'spent' };
+const markBadge = (mode) => !mode ? '' : `<span class="pl-day-icon" aria-hidden="true">${mode === 'full' ? icon('Coin', 22) : `<img src="img/calendar-${mode === 'free' ? 'no-spend' : 'planned'}.png" alt="" width="36" height="36">`}</span>`;
+let amountSizer;
+const amountMeasure = document.createElement('canvas').getContext('2d');
+function fitDayAmount(input) {
+  if (!input?.isConnected) return;
+  const label = input.closest('.pl-sel-a');
+  const available = label.parentElement.clientWidth - 72;
+  amountMeasure.font = '64px Anton';
+  const measured = amountMeasure.measureText(input.value || '0').width;
+  const size = Math.max(18, Math.min(120, 64 * (available - 28) / Math.max(1, measured)));
+  label.style.fontSize = input.style.fontSize = `${size}px`;
+  label.querySelector('.pl-rm').style.fontSize = `${Math.min(30, size * .28)}px`;
+  input.style.width = `${Math.ceil(measured * size / 64) + 28}px`;
+  input.style.height = `${Math.ceil(size * 1.4) + 16}px`;
+  label.querySelector('.pl-amount-display').textContent = input.value;
+}
 
 // ---------- Budget tab ----------
 function weekCard(avg, habit) {
@@ -49,16 +63,16 @@ function budgetTab(d, today, month, r, budget) {
   const planned = Object.entries(st.plans).filter(([date]) => date >= today).reduce((t, [, v]) => t + v, 0);
   const days = (n) => `${n} ${n === 1 ? 'day' : 'days'}`;
   const marked = [
-    tally.free.n ? `<div class="mline" style="font-size:14px;opacity:.7;padding-left:12px"><span>Red · ${days(tally.free.n)}</span><b>no cost</b></div>` : '',
-    tally.lite.n ? `<div class="mline" style="font-size:14px;opacity:.7;padding-left:12px"><span>Teal · ${days(tally.lite.n)}, instead of the daily bill</span><b>${E.cash(tally.lite.sum)}</b></div>` : '',
-    tally.full.n ? `<div class="mline" style="font-size:14px;opacity:.7;padding-left:12px"><span>Yellow · ${days(tally.full.n)}, extra on top of the bill</span><b>${E.cash(tally.full.sum)}</b></div>` : '',
+    tally.free.n ? `<div class="mline" style="font-size:14px;opacity:.7;padding-left:12px"><span>No spend · ${days(tally.free.n)}</span><b>no cost</b></div>` : '',
+    tally.lite.n ? `<div class="mline" style="font-size:14px;opacity:.7;padding-left:12px"><span>Only this much · ${days(tally.lite.n)}, instead of the daily bill</span><b>${E.cash(tally.lite.sum)}</b></div>` : '',
+    tally.full.n ? `<div class="mline" style="font-size:14px;opacity:.7;padding-left:12px"><span>Budget + extra · ${days(tally.full.n)}, extra on top of the bill</span><b>${E.cash(tally.full.sum)}</b></div>` : '',
   ].join('');
   const daysLeft = E.daysInMonth(month) - Number(today.slice(8)) + 1;
   const line = (label, minor, sign) => `<div class="mline"><span>${label}</span><b>${sign} ${E.cash(minor)}</b></div>`;
   return `<div class="card rise" style="--i:0"><div class="row"><div class="grow"><div class="muted">Left for ${daysLeft} days</div>${amountHTML(r.remaining + r.spentToday, 'big-amount', 'font-size:32px;letter-spacing:-.8px')}</div>
       <button class="btn line" data-act="budget" style="min-height:44px">${icon('Edit', 18)} Edit</button></div>
       <hr class="divider" style="margin:16px 0">
-      ${line('Income', budget.incomeMinor, '+')}${line('Fixed bills (yours)', E.billsFor(d, budget, today), '−')}${billLines(d.bills.filter((b) => !b.family), month, skipped)}${hasDaily && skipped ? `<p class="muted small" style="margin:2px 0 6px 12px">Daily bills aren’t charged on the ${skipped} days marked red or teal in Calendar.</p>` : ''}${marked}${planned > 0 ? line('Planned for coming days', planned, '−') : ''}${line('Saved for your goals', budget.savingsMinor, '−')}${line('Spent so far', r.spentBeforeToday + r.spentToday, '−')}
+      ${line('Income', budget.incomeMinor, '+')}${line('Fixed bills (yours)', E.billsFor(d, budget, today), '−')}${billLines(d.bills.filter((b) => !b.family), month, skipped)}${hasDaily && skipped ? `<p class="muted small" style="margin:2px 0 6px 12px">Daily bills aren’t charged on the ${skipped} days marked No spend or Only this much in Calendar.</p>` : ''}${marked}${planned > 0 ? line('Planned for coming days', planned, '−') : ''}${line('Saved for your goals', budget.savingsMinor, '−')}${line('Spent so far', r.spentBeforeToday + r.spentToday, '−')}
       ${family ? `<div class="mline" style="opacity:.6"><span>Bills paid by family</span><b>${E.cash(family)}</b></div>${billLines(d.bills.filter((b) => b.family), month)}<p class="muted small" style="margin:4px 0 0">Shown for your total only. It isn’t taken from your budget.</p>` : ''}
       <p class="muted small" style="margin:12px 0 0">Every day you log, the rest of the month re-balances around what’s left.</p></div>
     ${weekCard(E.weekdayAverages(d, today), d.settings.weightMode === 'HABIT')}`;
@@ -87,28 +101,34 @@ function dayInfo(d, date, today, st) {
   return { total, mode, count: st.count[date] ?? 0, family: st.family[date] ?? 0 };
 }
 
+const dayCard = (name, field, chip) => {
+  const suggestion = chip.startsWith('Suggested ') ? `<span class="pl-suggest-label">Suggested</span><strong>${esc(chip.slice(10))}</strong>` : `<span>${esc(chip)}</span>`;
+  return `<div class="pl-day-card" aria-label="${esc(name)}"><div class="pl-day-main"><div class="pl-amount-wrap">${field}</div><span class="pl-chip">${suggestion}</span></div></div>`;
+};
+
 /** The selected day at the top of the calendar: what that day comes to (a field you type into), and what is suggested for it. */
 function dayHead(date, today, started, info, suggested, swaps = []) {
   const name = dayLong(date);
-  if (date < started) return `<div class="pl-sel off"><span class="pl-sel-d">${esc(name)}</span><span class="pl-sel-a">—</span><span class="pl-chip">Before your budget started</span></div>`;
-  const { total, mode, count, family } = info;
+  const cardDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(`${date}T12:00:00`)).replace(',', '');
+  if (date < started) return `<div class="pl-sel off">${dayCard(cardDate, '<span class="pl-sel-a">—</span>', 'Before your budget started')}</div>`;
+  const { total, count, family } = info;
   const locked = count > 1 && date < today; // several expenses: change them one by one in Activity
   const chip = suggested < 0 ? 'No budget left this month' : `Suggested ${E.cash(suggested)}`;
-  const field = `<label class="pl-sel-a"><span class="pl-rm">RM</span><input class="pl-in" data-amount="${date}" inputmode="decimal" enterkeyhint="done" autocomplete="off"
-    value="${E.decimal(total ?? 0)}" style="width:${Math.max(3, E.decimal(total ?? 0).length + 0.5)}ch" aria-label="${esc(`${name} spent`)}" ${locked ? 'readonly' : ''}>${locked ? '' : icon('Edit', 18)}</label>`;
-  return `<div class="pl-sel"><span class="pl-sel-d">${esc(name)}</span>${field}<span class="pl-chip ${MARK_CLASS[mode] ?? ''}">${esc(locked ? `${count} expenses, see Activity` : chip)}</span>${swaps.length ? `<span class="pl-sw">${swaps.map((w) => `<span>${swapIcon({ cheaperName: w.name, usualName: w.usual ?? '' }, 14)} ${esc(w.name)}${w.usual ? ` instead of ${esc(w.usual)}` : ''} · −${E.cash(w.savingMinor)}</span>`).join('')}</span>` : ''}${family ? `<span class="pl-sw"><span>Family paid ${E.cash(family)}, not part of your budget</span></span>` : ''}</div>`;
+  const field = `<label class="pl-sel-a" style="--amount-digits:${E.decimal(total ?? 0).length}"><span class="pl-rm">RM</span><span class="pl-amount-display" aria-hidden="true">${E.decimal(total ?? 0)}</span><input class="pl-in" data-amount="${date}" inputmode="decimal" enterkeyhint="done" autocomplete="off"
+    value="${E.decimal(total ?? 0)}" style="width:${Math.max(3, E.decimal(total ?? 0).length + 0.6)}ch" aria-label="${esc(`${name} spent`)}" ${locked ? 'readonly' : ''}></label>`;
+  return `<div class="pl-sel">${dayCard(cardDate, field, chip)}${locked ? `<span class="pl-sw">${count} expenses, see Activity</span>` : ''}${swaps.length ? `<span class="pl-sw">${swaps.map((w) => `<span>${swapIcon({ cheaperName: w.name, usualName: w.usual ?? '' }, 14)} ${esc(w.name)}${w.usual ? ` instead of ${esc(w.usual)}` : ''} · −${E.cash(w.savingMinor)}</span>`).join('')}</span>` : ''}${family ? `<span class="pl-sw"><span>Family paid ${E.cash(family)}, not part of your budget</span></span>` : ''}</div>`;
 }
 
 const infoButton = () => `<button class="pl-info" data-pl-info aria-label="What the marks mean"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/></svg></button>`;
 
 /** The explanation of the marks, in a small sheet instead of a legend on the calendar. */
 function openMarkInfo() {
-  const row = (cls, title, text) => `<div class="mk-row"><span class="mk-mark"><i class="${cls}"></i></span><div><b>${title}</b><p>${text}</p></div></div>`;
-  openSheet({ title: 'What the marks mean', noSave: true, fields: [{ t: 'html', html: () => `<div class="mk-list">
-    ${row('mk-free', 'No spend', 'Nothing spent. Daily bills aren’t counted that day.')}
-    ${row('mk-lite', 'Only this much', 'Just the amount at the top. Daily bills aren’t counted that day.')}
-    ${row('mk-full', 'Budget + extra', 'Daily bills are counted, plus the amount at the top.')}
-    ${row('mk-none', 'No mark', 'Nothing set for this day yet.')}
+  const row = (mode, title, text) => `<div class="mk-row"><span class="mk-mark">${markBadge(mode) || '<span class="pl-no-mark">17</span>'}</span><div><b>${title}</b><p>${text}</p></div></div>`;
+  openSheet({ title: 'What the marks mean', noSave: true, fields: [{ t: 'html', html: () => `<div class="mk-list"><div class="mk-rows">
+    ${row('free', 'No spend', 'No spending. Daily bills are skipped.')}
+    ${row('lite', 'Only this much', 'Spend only the amount above. Daily bills are skipped.')}
+    ${row('full', 'Budget + extra', 'Daily bills plus the amount above.')}
+    ${row(null, 'No mark', 'No plan set. The date stays as a number.')}</div>
         <p class="mk-tip">Tap a day to select it. Tap it again to switch its mark, and tap the amount to type it.</p></div>` }] });
 }
 
@@ -127,15 +147,17 @@ function calendarCard(month, today, infos, sel, paybacks = []) {
     const { total: sum, mode } = infos[date];
     const hint = { free: 'no spend', lite: `only ${E.cash(sum ?? 0)}`, full: `budget used, ${E.cash(sum ?? 0)} in all` }[mode] ?? 'not marked';
     const cls = ['pl-d', date === today && 'today', date === sel && 'sel', MARK_CLASS[mode]].filter(Boolean).join(' ');
-    return `<button class="${cls}" style="--n:${num}" data-date="${date}" aria-label="${esc(`${dayLong(date)}, ${hint}`)}"><b>${num}</b><i></i></button>`;
+    return `<button class="${cls}" data-date="${date}" aria-pressed="${date === sel}" title="${esc(`${dayLong(date)}, ${hint}`)}" aria-label="${esc(`${dayLong(date)}, ${hint}`)}">${mode ? markBadge(mode) : `<b>${num}</b>`}</button>`;
   };
-  const picked = E.monthOf(sel) === month ? dayHead(sel, today, started, infos[sel], E.allowanceOn(S.data, sel, today), paybacks.flatMap((p) => p.days.filter((x) => x.date === sel).flatMap((x) => x.swaps))) : `<div class="pl-sel off"><span class="pl-sel-a">—</span><span class="pl-chip">Pick a day</span></div>`;
+  const picked = dayHead(sel, today, started, infos[sel], E.allowanceOn(S.data, sel, today), paybacks.flatMap((p) => p.days.filter((x) => x.date === sel).flatMap((x) => x.swaps)));
   return `<div class="pl-cal rise" style="--i:1">
-    <div class="pl-cal-h">${arrow(-1, 'Previous', month <= earliest)}<b>${monthTitle(month)}</b>${arrow(1, 'Next', month >= latest)}</div>
     <div aria-live="polite">${picked}</div>
+    <section class="pl-calendar-panel" aria-label="${esc(monthTitle(month))} calendar">
     <div class="pl-wk">${HEAD.map((h) => `<span>${h}</span>`).join('')}</div>
+    <div class="pl-cal-h"><b>${monthTitle(month)}</b><div class="pl-month-nav">${arrow(-1, 'Previous', month <= earliest)}${arrow(1, 'Next', month >= latest)}</div></div>
     <div class="pl-grid">${cells.map(day).join('')}</div>
     ${infoButton()}
+    </section>
   </div>`;
 }
 
@@ -168,7 +190,14 @@ function activityList(d, view) {
 }
 
 function calendarTab(d, today, month) {
-  const view = S.ui.planMonth ?? month; const sel = S.ui.planSel ?? today;
+  const view = S.ui.planMonth ?? month;
+  const previous = S.ui.planSel ?? today;
+  // Carry the selected day into the visible month, clamping dates such as the 31st.
+  const day = Math.min(Number(previous.slice(8)), E.daysInMonth(view));
+  let sel = `${view}-${String(day).padStart(2, '0')}`;
+  const started = E.budgetFrom(d.settings);
+  if (sel < started) sel = started;
+  S.ui.planSel = sel;
   const st = monthState(d, view);
   const infos = {};
   for (let n = 1; n <= E.daysInMonth(view); n++) { const date = `${view}-${String(n).padStart(2, '0')}`; infos[date] = dayInfo(d, date, today, st); }
@@ -191,6 +220,15 @@ export function view() {
     if (tab === 'budget') requestAnimationFrame(() => requestAnimationFrame(() => page.querySelectorAll('.week .b').forEach((b) => { b.style.height = b.dataset.h; })));
     if (animate) countUp(page);
     const root = page.querySelector('.pl-root'); // replaced on every render, so these listeners never pile up
+    amountSizer?.disconnect();
+    const amountInput = root.querySelector('.pl-in');
+    if (amountInput) {
+      const fit = () => fitDayAmount(amountInput);
+      fit();
+      document.fonts.ready.then(fit);
+      amountSizer = new ResizeObserver(fit);
+      amountSizer.observe(amountInput.closest('.pl-amount-wrap'));
+    }
     const info = (date) => dayInfo(S.data, date, today, monthState(S.data, E.monthOf(date)));
 
     // Set what a day comes to. A past day is logged spending (one expense, replaced in place); today and later take a plan.
@@ -217,7 +255,6 @@ export function view() {
       const budget = Math.max(E.allowanceOn(S.data, date, today), 0);
       const next = NEXT[now.mode ?? 'none'];
       applyDay(date, next === 'none' ? null : next === 'free' ? 0 : next === 'full' ? (budget > 0 ? budget : 100) : litePick(budget), MODE_MARK[next] ?? null);
-      if (next === 'lite') { const input = document.querySelector('.pl-in'); input?.focus(); input?.select(); } // straight on to typing the amount
     };
     const tapDay = (date) => {
       if ((S.ui.planSel ?? today) === date) return cycle(date);
@@ -233,9 +270,13 @@ export function view() {
       if (mo && !mo.disabled) { S.ui.planMonth = E.addMonths(S.ui.planMonth ?? month, Number(mo.dataset.plMonth)); return rerender(); }
       if (e.target.closest('[data-pl-new]')) { const sel = S.ui.planSel ?? today; return openPlanDay(sel >= today ? sel : today); }
     });
-    // The amount at the top: select it on focus, grow with what's typed, save when you finish.
-    root.addEventListener('focusin', (e) => { if (e.target.matches('.pl-in')) setTimeout(() => e.target.select?.(), 0); });
-    root.addEventListener('input', (e) => { if (e.target.matches('.pl-in')) e.target.style.width = `${Math.max(3, e.target.value.length + 0.5)}ch`; });
+    // Only an intentional tap or keyboard focus edits the amount; cycling marks never opens the keyboard.
+    // Grow with what's typed and save when you finish, without selecting the whole amount on focus.
+    root.addEventListener('input', (e) => {
+      if (!e.target.matches('.pl-in')) return;
+      e.target.closest('.pl-sel-a').style.setProperty('--amount-digits', Math.max(1, e.target.value.length));
+      fitDayAmount(e.target);
+    });
     root.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('.pl-in')) { e.preventDefault(); e.target.blur(); } });
     root.addEventListener('change', (e) => {
       const input = e.target.closest('.pl-in'); if (!input || input.readOnly) return;

@@ -1,9 +1,9 @@
 // Offline cache: the app shell is stored on first visit, so the app opens with no connection.
-const VERSION = 'allowance-v56';
+const VERSION = 'allowance-v58';
 const LIB = 'allowance-lib'; // the pinned AI library from the CDN; it outlives app updates
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'css/app.css', 'js/app.js', 'js/engine.js', 'js/nlu.js', 'js/llm.js', 'js/receiptscan.js', 'js/state.js', 'js/ui.js', 'js/icons.js', 'js/charts.js', 'js/editors.js', 'js/parts.js', 'js/demo.js',
   'js/pages/home.js', 'js/pages/history.js', 'js/pages/analytics.js', 'js/pages/plan.js', 'js/pages/goals.js', 'js/pages/wallet.js', 'js/pages/ai.js', 'js/pages/settings.js', 'js/pages/swaps.js',
-  'img/tiger_head.webp', 'img/tiger_mascot.webp', 'img/wallet_card_silver.webp', 'img/icon-192.png', 'img/icon-512.png', 'img/apple-touch-icon.png'];
+  'img/tiger_head.webp', 'img/tiger_mascot.webp', 'img/wallet_card_silver.webp', 'img/icon-192.png', 'img/icon-512.png', 'img/apple-touch-icon.png', 'fonts/Anton-Regular.ttf', 'img/calendar-no-spend.png', 'img/calendar-planned.png'];
 
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 // Only delete OLD app caches. The on-device AI keeps its downloaded model in this same storage (caches named "webllm…");

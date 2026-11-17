@@ -120,15 +120,13 @@ test('a logged expense lowers today and the account balance', () => {
   assert.equal(E.accountBalance(d, d.accounts[0]), 100_000);
 });
 
-test('transfers move money without touching the budget; adjustments leave a difference', () => {
+test('balance adjustments update an account without touching the budget', () => {
   let d = withAccounts(base());
   const remaining = E.result(d, month, today).remaining;
-  d = E.transfer(d, 'bank', 'cash', 500, today);
-  assert.equal(E.accountBalance(d, d.accounts[0]), 99_500);
-  assert.equal(E.accountBalance(d, d.accounts[1]), 10_500);
-  assert.equal(E.result(d, month, today).remaining, remaining);
   d = E.setBalance(d, 'bank', 98_000, today);
   assert.equal(E.accountBalance(d, d.accounts[0]), 98_000);
+  assert.equal(E.accountBalance(d, d.accounts[1]), 10_000);
+  assert.equal(E.result(d, month, today).remaining, remaining);
 });
 
 test('fund purchase uses saved money first and releases the leftover', () => {

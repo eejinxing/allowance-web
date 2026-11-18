@@ -1,4 +1,4 @@
-// The on-device AI. Two free backends, same interface, so everything above this file doesn't care which one is running:
+// The budget assistant uses the same interface for both local model backends:
 //   - "browser": a small model (Qwen2.5 1.5B) inside the page through WebGPU and the WebLLM library, downloaded once (about 1 GB).
 //     Works on a phone with a recent browser.
 //   - "ollama": a model served by Ollama on your own computer (http://localhost:11434). Bigger models, much faster, and the only way

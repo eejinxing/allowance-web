@@ -1,5 +1,4 @@
-// The on-device AI layer, tested with a fake engine (no model is downloaded). What matters here is the guard rails:
-// the model's form becomes an intent, amounts always come from the text, and anything unusable falls back to null.
+// A fake model backend checks intent conversion, amount extraction from the input, and fallback handling.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { toIntent, understand, systemPrompt, SCHEMA } from '../js/llm.js';

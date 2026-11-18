@@ -241,7 +241,7 @@ button { border: 0; background: none; padding: 0; cursor: pointer; }
 .seg button { flex: 1; height: 44px; border-radius: 99px; font-weight: 500; color: var(--muted); transition: background .2s; } .seg button.on { background: var(--card); color: var(--text); font-weight: 700; }
 .mline { display: flex; justify-content: space-between; padding: 4px 0; } .mline span:first-child { color: var(--muted); } .mline b { font-weight: 600; }
 
-/* ---------- AI ---------- */
+/* ---------- Budget assistant ---------- */
 .ai { display: flex; flex-direction: column; padding: 0; background: radial-gradient(120% 70% at 100% 0%, var(--glow), transparent 60%), radial-gradient(70% 50% at 10% 20%, var(--soft), transparent 70%), linear-gradient(180deg, var(--hero-top), var(--hero-mid) 35%, var(--bg) 78%); overflow: hidden; }
 .ai-top { display: flex; align-items: center; justify-content: space-between; padding: calc(var(--st) + 4px) 12px 0; height: calc(var(--st) + 60px); flex: none; font-weight: 600; font-size: 18px; }
 .ai-scroll { flex: 1; overflow-y: auto; padding: 0 22px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px; }

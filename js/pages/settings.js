@@ -4,7 +4,7 @@ import { S, DEMO, storageIsPersistent } from '../state.js';
 import { header, esc } from '../ui.js';
 import * as llm from '../llm.js';
 
-/** The AI card: which AI is connected, or how to connect one. Redrawn as the connection or download progresses. */
+/** Shows the local model connection or download status and the available setup controls. */
 function aiCardBody() {
   const st = llm.state; const sup = S.ui.aiSupport; const pref = S.prefs.ollama ?? {};
   const bad = (msg) => `<p class="small" style="margin:0 0 12px;color:var(--danger,#c0392b)">${esc(msg)}</p>`;

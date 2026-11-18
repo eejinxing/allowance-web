@@ -1,7 +1,7 @@
 // Reads one line of everyday language and says what it means: "spent RM3 on coffee", "我今天花了3块买咖啡",
 // "can I afford sneakers RM 120?", "how much is left today". English and Chinese, plus a small set of everyday Malay words (beli, bayar,
 // baki, padam, boleh…): enough for short sentences, not a Malay reader.
-// Free by design: no AI service, no network, no key. It is a set of rules, so it only knows the sentence shapes below.
+// The rules parse the sentence patterns below and run offline.
 // Its one firm promise is about money: an amount must be WRITTEN in the sentence, and a bare number only counts as a price when
 // nothing in the sentence says it is something else ("3 km", "100%", "bus 12", a phone number). When unsure it does nothing.
 // Pure functions, no DOM, so it can be tested on its own.

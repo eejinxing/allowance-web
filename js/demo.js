@@ -18,7 +18,7 @@ const NOTES = {
 };
 const RANGE = { FOOD: [250, 2200], TRANSPORT: [150, 1500], SHOPPING: [1200, 9000], FUN: [900, 3800], HEALTH: [600, 3000], OTHER: [300, 2500] };
 
-/** Three past chats with the budget assistant, so the AI page has something to show. */
+/** Sample conversations displayed in the demo budget assistant. */
 export const demoChat = () => [
   { kind: 'me', text: 'Sneakers RM 120' }, { kind: 'check', name: 'Sneakers', amount: 12000 },
   { kind: 'me', text: 'Can I buy bubble tea RM 9?' }, { kind: 'check', name: 'Bubble tea', amount: 900 },

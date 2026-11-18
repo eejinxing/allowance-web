@@ -190,7 +190,7 @@ export function view() {
     });
     const add = (t) => { S.chat.push(t); chat.insertAdjacentHTML('beforeend', turnHTML(t, S.chat.length - 1)); setTimeout(() => scroll.scrollTo({ top: scroll.scrollHeight, behavior: 'smooth' }), 80); return S.chat.length - 1; };
     page.__addTurn = add;
-    // The AI model, when it was turned on in Settings, starts loading in the background; the line under the chat says how it is going.
+    // Show the selected model's loading status below the chat.
     llm.listen('ai', () => { const el = page.querySelector('#aistate'); if (el) el.textContent = aiStateText(); });
     startAI(); // the error, if any, shows in that line, and the rules keep working
     const file = page.querySelector('#aifile');
@@ -218,7 +218,7 @@ const PERIOD = { today: ['today', '今天'], yesterday: ['yesterday', '昨天'],
 const HELP = ['I can record what you spent (“Spent RM 3 on coffee”), check a purchase (“Sneakers RM 120”), tell you what’s left today, or add up your spending (“How much did I spend on food this month?”). Say “undo” to take back the last thing I recorded.',
   '我可以帮你记账（“今天花了3块买咖啡”）、判断能不能买（“买球鞋 120块”）、告诉你今天还剩多少，或者统计花费（“这个月吃饭花了多少”）。说“撤销”可以取消我刚记的那笔。'];
 
-/** Starts whichever AI was turned on in Settings (once per visit). */
+/** Starts the model backend selected in Settings once per visit. */
 export function startAI() {
   if (!S.prefs.ai || llm.state.status !== 'off') return;
   (S.prefs.ai === 'ollama' ? llm.loadOllama(S.prefs.ollama?.url, S.prefs.ollama) : llm.load()).catch(() => {});
@@ -239,8 +239,8 @@ function drop(turn) {
 }
 let thinking = false;
 
-/** Reads what you typed and does it. Two readers: the rules, and (when the AI is on) a small model on this device. A record is only
- *  written when both agree it is one (see llm.combine); the rules alone answer when the AI is off. Nothing is sent anywhere. */
+/** Parses input with built-in rules and an optional local model. If the model returns an intent, both readers must
+ *  identify an expense before saving it. If no model result is available, the rules decide. */
 async function respond(text) {
   const zh = isChinese(text); const tr = (en, cn) => (zh ? cn : en);
   const note = (en, cn) => push({ kind: 'note', text: tr(en, cn) });

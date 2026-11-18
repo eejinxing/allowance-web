@@ -1,4 +1,4 @@
-// The local language reader: what each kind of sentence turns into. No AI service is involved, so these are exact.
+// Test how the built-in rules translate each sentence into a budget action.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as E from '../js/engine.js';
